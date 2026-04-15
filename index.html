@@ -301,7 +301,7 @@ footer{text-align:center;padding:2rem 1rem;font-size:11px;color:var(--hint);bord
         <div class="input-row">
           <label data-tip="Heating and cooling share of your bill">HVAC share of bill</label>
           <div class="input-field-wrap">
-            <input class="text-input" id="hvac" type="number" min="20" max="75" step="1" value="45" oninput="calc()" placeholder="e.g. 45"/>
+            <input class="text-input" id="hvac" type="number" min="0" max="100" step="0.1" value="45" oninput="calc()" placeholder="e.g. 45"/>
             <span class="input-suffix">%</span>
           </div>
           <div class="input-help">Most homes are around 30% to 60%.</div>
@@ -309,7 +309,7 @@ footer{text-align:center;padding:2rem 1rem;font-size:11px;color:var(--hint);bord
         <div class="input-row">
           <label>Window area</label>
           <div class="input-field-wrap">
-            <input class="text-input" id="wArea" type="number" min="2" max="60" step="1" value="12" oninput="calc()" placeholder="e.g. 12"/>
+            <input class="text-input" id="wArea" type="number" min="0.1" max="10000" step="0.1" value="12" oninput="calc()" placeholder="e.g. 12"/>
             <span class="input-suffix">m²</span>
           </div>
           <div class="input-help">Use total glazed area across all windows (about 6 to 30 m² for most homes).</div>
@@ -555,7 +555,7 @@ footer{text-align:center;padding:2rem 1rem;font-size:11px;color:var(--hint);bord
           <label>Install cost per m²</label>
           <div class="input-field-wrap">
             <span class="input-prefix">Cost</span>
-            <input class="text-input" id="cpm" type="number" min="50" max="500" step="10" value="150" oninput="calcROI()"/>
+            <input class="text-input" id="cpm" type="number" min="0" step="0.01" value="150" oninput="calcROI()"/>
           </div>
           <div class="input-help">Use your contractor quote if available (commonly 100 to 250 in local currency per m²).</div>
         </div>
@@ -563,14 +563,14 @@ footer{text-align:center;padding:2rem 1rem;font-size:11px;color:var(--hint);bord
           <label>Annual maintenance</label>
           <div class="input-field-wrap">
             <span class="input-prefix">Cost</span>
-            <input class="text-input" id="maint" type="number" min="0" max="600" step="20" value="80" oninput="calcROI()"/>
+            <input class="text-input" id="maint" type="number" min="0" step="0.01" value="80" oninput="calcROI()"/>
           </div>
           <div class="input-help">Typical yearly maintenance is often 40 to 200 in local currency.</div>
         </div>
         <div class="input-row">
           <label>Energy price growth</label>
           <div class="input-field-wrap">
-            <input class="text-input" id="egrow" type="number" min="0" max="12" step="0.5" value="3" oninput="calcROI()"/>
+            <input class="text-input" id="egrow" type="number" min="-50" max="100" step="0.1" value="3" oninput="calcROI()"/>
             <span class="input-suffix">%</span>
           </div>
           <div class="input-help">Most long-term assumptions are 2% to 5% per year.</div>
@@ -807,10 +807,10 @@ function sanitizeProfile(){
   const eBillEl=$('eBill'), hvacEl=$('hvac'), areaEl=$('wArea'), cntEl=$('wCount');
   const ageEl=$('bAge'), sfEl=$('sFace'), ewEl=$('ewFace'), shadeEl=$('exShade');
   eBillEl.value=clamp(vn('eBill'),0,200000);
-  hvacEl.value=clamp(vn('hvac'),20,75);
-  areaEl.value=clamp(vn('wArea'),2,60);
-  cntEl.value=clamp(vn('wCount'),1,30);
-  ageEl.value=clamp(vn('bAge'),1,80);
+  hvacEl.value=clamp(vn('hvac'),0,100);
+  areaEl.value=clamp(vn('wArea'),0.1,10000);
+  cntEl.value=clamp(Math.round(vn('wCount')),1,500);
+  ageEl.value=clamp(vn('bAge'),0,300);
   sfEl.value=clamp(vn('sFace'),0,100);
   ewEl.value=clamp(vn('ewFace'),0,100);
   shadeEl.value=clamp(vn('exShade'),0,80);
@@ -1124,22 +1124,33 @@ function updateMonthly(cs,hs,ds,cf){
 /* ── ROI ────────────────────────────────────────────────────────────────── */
 function calcROI(save,area,cnt){
   if(save===undefined){save=lastSave;area=vn('wArea');cnt=vn('wCount');}
-  $('cpm').value=clamp(vn('cpm'),50,500);
-  $('maint').value=clamp(vn('maint'),0,600);
-  $('egrow').value=clamp(vn('egrow'),0,12);
+  $('cpm').value=clamp(vn('cpm'),0,1000000);
+  $('maint').value=clamp(vn('maint'),0,1000000);
+  $('egrow').value=clamp(vn('egrow'),-50,100);
   const cpp=vn('cpm'),mt=vn('maint'),gr=vn('egrow')/100;
   const inst=cpp*area*cnt; lastInstall=inst;
   let cum=0,pb=0,rd=[];
   for(let y=1;y<=10;y++){cum+=save*Math.pow(1+gr,y-1)-mt;if(cum>=inst&&!pb)pb=y;rd.push(Math.round(cum));}
   const net=rd[9]-inst;
+  const rebateTot=getRebateTotal(inst);
+  const netInst=Math.max(0,inst-rebateTot);
+  const annualNet=save-mt;
+  const pbAfter=(annualNet>0&&netInst>0)?Math.ceil(netInst/annualNet):(netInst===0?0:null);
+  const netAfter=rd[9]-netInst;
+  const roiAfter=netInst>0?Math.round((netAfter/netInst)*100):0;
   $('heroPayback').textContent=pb||'—';
   const netColor=net>=0?'var(--g600)':'var(--r400)';
+  const netAfterColor=netAfter>=0?'var(--g600)':'var(--r400)';
   $('roiCards').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
     <div class="metric"><div class="m-lbl">Install cost</div><div class="m-val" style="font-size:16px">${fc(inst)}</div></div>
     <div class="metric"><div class="m-lbl">Payback</div><div class="m-val" style="font-size:16px">${pb?pb+' yrs':'>10 yrs'}</div></div>
     <div class="metric"><div class="m-lbl">10-yr net return</div><div class="m-val" style="font-size:16px;color:${netColor}">${fc(net)}</div></div>
-    <div class="metric"><div class="m-lbl">Lifetime ROI</div><div class="m-val" style="font-size:16px">${inst>0?Math.round((net/inst)*100):0}%</div></div></div>`;
-  $('roiSum').innerHTML=`Install cost: ${fc(inst)}<br>Payback: <strong>${pb||'>10'} years</strong><br>10-yr savings: ${fc(rd[9])}<br>Net return: <strong>${fc(net)}</strong>`;
+    <div class="metric"><div class="m-lbl">Lifetime ROI</div><div class="m-val" style="font-size:16px">${inst>0?Math.round((net/inst)*100):0}%</div></div>
+    <div class="metric"><div class="m-lbl">Net install after incentives</div><div class="m-val" style="font-size:16px">${fc(netInst)}</div></div>
+    <div class="metric"><div class="m-lbl">Payback after incentives</div><div class="m-val" style="font-size:16px">${pbAfter===0?'Immediate':pbAfter?pbAfter+' yrs':'>10 yrs'}</div></div>
+    <div class="metric"><div class="m-lbl">10-yr return after incentives</div><div class="m-val" style="font-size:16px;color:${netAfterColor}">${fc(netAfter)}</div></div>
+    <div class="metric"><div class="m-lbl">ROI after incentives</div><div class="m-val" style="font-size:16px">${roiAfter}%</div></div></div>`;
+  $('roiSum').innerHTML=`Install cost: ${fc(inst)}<br>Payback: <strong>${pb||'>10'} years</strong><br>10-yr savings: ${fc(rd[9])}<br>Net return: <strong>${fc(net)}</strong><br><br>After incentives net install: <strong>${fc(netInst)}</strong><br>Payback after incentives: <strong>${pbAfter===0?'Immediate':pbAfter?pbAfter+' years':'>10 years'}</strong><br>ROI after incentives: <strong>${roiAfter}%</strong>`;
   const dk=matchMedia('(prefers-color-scheme:dark)').matches;
   const gc=dk?'rgba(255,255,255,.07)':'rgba(0,0,0,.06)', tc=dk?'#5a6b57':'#8fa08b';
   if(rChartInst){rChartInst.data.datasets[0].data=rd;rChartInst.data.datasets[0].backgroundColor=rd.map(v=>v<inst?'#c8c8c0':'#1d9e89');rChartInst.data.datasets[1].data=Array(10).fill(Math.round(inst));rChartInst.update();return;}
@@ -1156,6 +1167,10 @@ function getRebates(){
   const rd=REBATES[curCntryCode]||REBATES['_']||{};
   return rd[curReg]||rd['_']||[];
 }
+function getRebateTotal(inst){
+  const rl=getRebates();
+  return rl.reduce((sum,r)=>sum+(r.t==='p'?Math.round(inst*r.a):r.a),0);
+}
 function updateRebates(save,area,cnt){
   const inst=(vn('cpm')||150)*area*cnt;
   const rl=getRebates(); let tot=0;
@@ -1166,8 +1181,9 @@ function updateRebates(save,area,cnt){
   $('rebTotal').textContent=fc(tot);
   $('heroRebate').textContent=fc(tot);
   const net=Math.max(0,inst-tot);
-  const pb2=save>0?Math.ceil(net/(save-(vn('maint')||80))):null;
-  $('rebCalc').innerHTML=`Gross install: ${fc(inst)}<br>Total rebates: <span style="color:var(--g600)">− ${fc(tot)}</span><br><strong>Net investment: ${fc(net)}</strong><br>Revised payback: <strong>${pb2&&pb2>0&&pb2<=30?pb2+' years':'>10 years'}</strong>`;
+  const annualNet=save-vn('maint');
+  const pb2=(annualNet>0&&net>0)?Math.ceil(net/annualNet):(net===0?0:null);
+  $('rebCalc').innerHTML=`Gross install: ${fc(inst)}<br>Total rebates: <span style="color:var(--g600)">− ${fc(tot)}</span><br><strong>Net investment: ${fc(net)}</strong><br>Revised payback: <strong>${pb2===0?'Immediate':pb2&&pb2>0&&pb2<=30?pb2+' years':'>10 years'}</strong>`;
   const co2=Math.round(save*(WORLD[curCntryCode]?.co2||.42));
   $('carbonEl').innerHTML=`<div class="reb"><div class="reb-l"><div class="rn">Carbon offset credits</div><div class="rd">${co2.toLocaleString()} kg CO₂/yr × ~$0.015/kg voluntary market rate</div></div><div class="reb-a">${fc(Math.round(co2*.015))}/yr</div></div>`;
 }
