@@ -1,0 +1,1386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>FacadeIQ — Adaptive Facade Energy Calculator</title>
+<meta name="description" content="Calculate energy savings and see live panel decisions for the Adaptive Facade System. Covers 70+ countries."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+/* ── Tokens ──────────────────────────────────────────────────────────────── */
+:root{
+  --bg:#f5f6f3;--surface:#fff;--surface2:#eef0ec;--surface3:#e4e7e0;
+  --border:rgba(40,54,36,.08);--border-md:rgba(40,54,36,.15);--border-strong:rgba(40,54,36,.26);
+  --text:#1d2b1a;--muted:#5a6b57;--hint:#8fa08b;
+  --g50:#eaf4e8;--g100:#c5e3c0;--g400:#3a9e32;--g500:#2d8226;--g600:#1f6219;
+  --a50:#fef3e2;--a400:#e8930a;--a700:#8a5500;
+  --r50:#fff0ee;--r400:#e04b30;--r700:#8a2a14;
+  --b50:#eef4ff;--b400:#3b7de8;--b700:#1a3f8f;
+  --t50:#e6f8f5;--t400:#1d9e89;--t700:#0d5e52;
+  --p50:#f0eeff;--p400:#7c5ede;--p700:#3d2a8a;
+  --rad:10px;--radlg:14px;--tr:.18s ease;
+  --shadow:0 1px 3px rgba(0,0,0,.06);
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#111612;--surface:#1a2118;--surface2:#222d1f;--surface3:#2c3828;
+  --border:rgba(255,255,255,.07);--border-md:rgba(255,255,255,.13);--border-strong:rgba(255,255,255,.22);
+  --text:#dce8d8;--muted:#8fa08b;--hint:#5a6b57;
+  --g50:#0d2b0a;--g100:#1f4f1b;--g400:#5eca55;--g500:#4db848;--g600:#3a9e32;
+  --a50:#2a1a00;--a400:#f0a830;--a700:#f5cc80;
+  --r50:#2a0e08;--r400:#f06050;--r700:#f5a090;
+  --b50:#0e1a35;--b400:#6b9ef0;--b700:#aac4f8;
+  --t50:#082820;--t400:#3dbfaa;--t700:#90d8cd;
+  --p50:#180d3a;--p400:#a080f0;--p700:#c8b0f8;
+  --shadow:0 1px 4px rgba(0,0,0,.35);
+}}
+
+/* ── Reset & base ───────────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:15px;scroll-behavior:smooth}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh}
+button,select,input{font-family:inherit}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+header{background:var(--surface);border-bottom:1px solid var(--border);height:52px;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-mark{width:28px;height:28px;border-radius:6px;background:var(--g500);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo-mark svg{width:16px;height:16px}
+.logo-name{font-weight:600;font-size:15px;letter-spacing:-.02em}
+.logo-name span{color:var(--g500)}
+.unit-pill{display:flex;border:1px solid var(--border-md);border-radius:20px;overflow:hidden;background:var(--surface2)}
+.unit-btn{padding:4px 11px;font-size:12px;font-weight:500;background:transparent;color:var(--muted);border:none;cursor:pointer;transition:all var(--tr)}
+.unit-btn.on{background:var(--g500);color:#fff}
+
+/* ── Stepper ────────────────────────────────────────────────────────────── */
+.stepbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 1.5rem;display:flex;gap:0;overflow-x:auto;scrollbar-width:none}
+.stepbar::-webkit-scrollbar{display:none}
+.step{display:flex;align-items:center;gap:8px;padding:10px 16px 10px 0;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;opacity:.5;transition:all var(--tr)}
+.step.active{opacity:1;border-bottom-color:var(--g500)}
+.step.done{opacity:.75}
+.step-n{width:20px;height:20px;border-radius:50%;font-size:11px;font-weight:600;background:var(--surface2);color:var(--muted);display:flex;align-items:center;justify-content:center;transition:all var(--tr)}
+.step.active .step-n{background:var(--g500);color:#fff}
+.step.done .step-n{background:var(--g100);color:var(--g600)}
+.step-l{font-size:12px;font-weight:500}
+.step.active .step-l{color:var(--g600)}
+
+/* ── Shell ──────────────────────────────────────────────────────────────── */
+.shell{max-width:1020px;margin:0 auto;padding:1.5rem 1.25rem 4rem}
+
+/* ── Hero ───────────────────────────────────────────────────────────────── */
+.hero{background:var(--g500);border-radius:20px;padding:1.5rem 2rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem}
+.hero-save{color:#fff}
+.hero-save .lbl{font-size:11px;font-weight:500;opacity:.7;text-transform:uppercase;letter-spacing:.05em}
+.hero-save .num{font-size:clamp(26px,5vw,40px);font-weight:600;letter-spacing:-.04em;line-height:1}
+.hero-save .sub{font-size:12px;opacity:.75;margin-top:4px}
+.hero-stats{display:flex;gap:1.5rem;flex-wrap:wrap}
+.hstat{color:#fff;opacity:.9}
+.hstat .sv{font-size:18px;font-weight:600;line-height:1}
+.hstat .sl{font-size:10px;opacity:.65;text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+
+/* ── Config strip ───────────────────────────────────────────────────────── */
+.cfg{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1.25rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radlg);padding:.9rem 1.1rem;align-items:flex-end}
+.cfg-f{display:flex;flex-direction:column;gap:5px;min-width:130px;flex:1}
+.t-lbl{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--hint)}
+
+/* ── Country search ─────────────────────────────────────────────────────── */
+.cntry-wrap{position:relative;flex:1;min-width:160px}
+.cntry-search{padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--rad);background:var(--surface2);color:var(--text);font-size:13px;outline:none;width:100%;transition:border-color var(--tr)}
+.cntry-search:focus{border-color:var(--g400)}
+.cntry-drop{position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border-md);border-radius:var(--rad);max-height:240px;overflow-y:auto;z-index:300;margin-top:3px;box-shadow:0 4px 12px rgba(0,0,0,.12);display:none}
+.cntry-drop.open{display:block}
+.cntry-opt{padding:8px 12px;font-size:13px;cursor:pointer;transition:background var(--tr)}
+.cntry-opt:hover,.cntry-opt.sel{background:var(--g50);color:var(--g600);font-weight:500}
+
+/* ── Grid ───────────────────────────────────────────────────────────────── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:1rem}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:1rem}
+
+/* ── Card ───────────────────────────────────────────────────────────────── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radlg);padding:1.25rem;box-shadow:var(--shadow)}
+.card-title{font-size:13px;font-weight:600;margin-bottom:1rem}
+
+/* ── Form controls ──────────────────────────────────────────────────────── */
+.sl-row{display:flex;align-items:center;gap:10px;margin-bottom:13px}
+.sl-lbl{font-size:12px;color:var(--muted);min-width:152px;cursor:default}
+.sl-val{font-size:12px;font-weight:600;min-width:62px;text-align:right;font-family:'DM Mono',monospace}
+input[type=range]{flex:1;-webkit-appearance:none;height:3px;border-radius:2px;background:var(--surface3);outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--g500);border:2px solid var(--surface);box-shadow:0 0 0 1.5px var(--g400)}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--g500);border:2px solid var(--surface);cursor:pointer}
+
+/* Text input for bill & rate */
+.input-row{display:flex;flex-direction:column;gap:5px;margin-bottom:13px}
+.input-row label{font-size:12px;color:var(--muted)}
+.input-help{font-size:10px;color:var(--hint);line-height:1.4;margin-top:2px}
+.input-field-wrap{display:flex;align-items:center;border:1px solid var(--border-md);border-radius:var(--rad);background:var(--surface2);overflow:hidden;transition:border-color var(--tr)}
+.input-field-wrap:focus-within{border-color:var(--g400)}
+.input-prefix{padding:0 10px;font-size:13px;font-weight:600;color:var(--g600);font-family:'DM Mono',monospace;background:var(--g50);border-right:1px solid var(--border-md);height:36px;display:flex;align-items:center;white-space:nowrap}
+.input-suffix{padding:0 10px;font-size:12px;color:var(--muted);background:var(--surface2);border-left:1px solid var(--border-md);height:36px;display:flex;align-items:center;white-space:nowrap}
+.text-input{flex:1;border:none;background:transparent;padding:0 10px;height:36px;font-size:13px;font-family:'DM Mono',monospace;color:var(--text);outline:none;min-width:0}
+
+select{padding:7px 10px;border:1px solid var(--border-md);border-radius:var(--rad);background:var(--surface2);color:var(--text);font-size:13px;cursor:pointer;outline:none;width:100%}
+select:focus{border-color:var(--g400)}
+
+/* ── Chips ──────────────────────────────────────────────────────────────── */
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.chip{padding:5px 12px;border:1px solid var(--border-md);border-radius:20px;background:transparent;color:var(--muted);font-size:12px;font-weight:500;cursor:pointer;transition:all var(--tr)}
+.chip:hover{background:var(--surface2)}
+.chip.on{background:var(--g50);color:var(--g600);border-color:var(--g400)}
+
+/* ── Metric cards ───────────────────────────────────────────────────────── */
+.metric{background:var(--surface2);border-radius:var(--rad);padding:.85rem 1rem;border:1px solid var(--border)}
+.m-lbl{font-size:11px;color:var(--hint);margin-bottom:5px;font-weight:500;text-transform:uppercase;letter-spacing:.05em}
+.m-val{font-size:19px;font-weight:600;font-family:'DM Mono',monospace;letter-spacing:-.02em}
+.m-sub{font-size:11px;color:var(--g500);margin-top:4px;font-weight:500}
+
+/* ── Savings bars ───────────────────────────────────────────────────────── */
+.bar-row{margin-bottom:11px}
+.bar-hd{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px}
+.bar-hd .bn{color:var(--muted)}
+.bar-hd .bv{font-weight:600;font-family:'DM Mono',monospace}
+.bar-track{height:7px;background:var(--surface3);border-radius:4px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;transition:width .5s cubic-bezier(.4,0,.2,1)}
+
+/* ── Panel visualiser ───────────────────────────────────────────────────── */
+.pviz{position:relative;height:160px;margin:.75rem 0;display:flex;align-items:center;justify-content:center}
+.panel-scene{width:220px;height:140px;position:relative}
+.wall-line{position:absolute;left:0;top:0;width:6px;height:100%;background:var(--border-strong);border-radius:3px}
+.panel-pivot{position:absolute;left:3px;top:50%;transform:translateY(-50%);width:10px;height:10px;background:var(--text);border-radius:50%;z-index:2;margin-left:-2px}
+.panel-slat-3d{position:absolute;left:13px;top:50%;height:8px;transform-origin:left center;border-radius:3px;transition:all .5s cubic-bezier(.4,0,.2,1)}
+.angle-arc{position:absolute;left:13px;top:50%;width:40px;height:40px;margin-top:-20px;pointer-events:none}
+.openness-bar-wrap{margin-top:12px}
+.openness-bar-track{height:10px;background:var(--surface3);border-radius:5px;overflow:hidden;margin-bottom:4px}
+.openness-bar-fill{height:100%;border-radius:5px;transition:width .5s cubic-bezier(.4,0,.2,1)}
+.openness-label{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+
+/* ── Sensor chips ───────────────────────────────────────────────────────── */
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.schip{background:var(--surface2);border-radius:var(--rad);padding:8px 10px;border:1px solid var(--border)}
+.schip-l{font-size:10px;color:var(--hint);margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em}
+.schip-v{font-size:15px;font-weight:600;font-family:'DM Mono',monospace}
+
+/* ── Live saving card ───────────────────────────────────────────────────── */
+.live-saving{background:var(--g50);border:1px solid var(--g100);border-radius:var(--radlg);padding:1rem 1.25rem;margin-top:1rem}
+.ls-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.ls-label{font-size:12px;color:var(--g600);font-weight:500}
+.ls-value{font-size:20px;font-weight:600;font-family:'DM Mono',monospace;color:var(--g600)}
+.ls-sub{font-size:11px;color:var(--muted)}
+
+/* ── Badge ──────────────────────────────────────────────────────────────── */
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px}
+.bdot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.bok{background:var(--g50);color:var(--g600)}.bok .bdot{background:var(--g500)}
+.bwarn{background:var(--a50);color:var(--a700)}.bwarn .bdot{background:var(--a400)}
+.binfo{background:var(--b50);color:var(--b700)}.binfo .bdot{background:var(--b400)}
+.bcold{background:var(--t50);color:var(--t700)}.bcold .bdot{background:var(--t400)}
+
+/* ── Rebate ─────────────────────────────────────────────────────────────── */
+.reb{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:12px;background:var(--surface2);border-radius:var(--rad);border:1px solid var(--border);margin-bottom:8px}
+.reb-l .rn{font-size:13px;font-weight:500;margin-bottom:2px}
+.reb-l .rd{font-size:11px;color:var(--muted)}
+.reb-a{font-size:13px;font-weight:600;color:var(--g600);font-family:'DM Mono',monospace;white-space:nowrap;flex-shrink:0}
+
+/* ── Log lines ──────────────────────────────────────────────────────────── */
+.logline{display:flex;gap:8px;align-items:flex-start;font-size:12px;color:var(--muted);line-height:1.5;padding:4px 0;border-bottom:1px solid var(--border)}
+.logline:last-child{border:none}
+.ldot{width:5px;height:5px;border-radius:50%;background:var(--g400);margin-top:6px;flex-shrink:0}
+
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+.brow{display:flex;gap:8px;flex-wrap:wrap;margin-top:1rem}
+.btn{padding:9px 18px;border-radius:var(--rad);font-size:13px;font-weight:500;cursor:pointer;transition:all var(--tr);border:1px solid transparent}
+.btn-p{background:var(--g500);color:#fff;border-color:var(--g500)}.btn-p:hover{background:var(--g600)}
+.btn-s{background:var(--surface2);color:var(--text);border-color:var(--border-md)}.btn-s:hover{background:var(--surface3)}
+
+/* ── Misc ───────────────────────────────────────────────────────────────── */
+.cw{position:relative;width:100%;height:220px}
+.div{height:1px;background:var(--border);margin:1rem 0}
+.info-note{font-size:11px;color:var(--muted);background:var(--surface2);border-left:3px solid var(--g400);padding:8px 12px;border-radius:0 var(--rad) var(--rad) 0;margin-top:8px;line-height:1.6}
+.warn-note{font-size:11px;color:var(--a700);background:var(--a50);border-left:3px solid var(--a400);padding:8px 12px;border-radius:0 var(--rad) var(--rad) 0;margin-top:8px;line-height:1.6;display:none}
+.cmp-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cmp-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--rad);padding:10px}
+.cmp-title{font-size:11px;font-weight:600;text-transform:uppercase;color:var(--hint);letter-spacing:.05em;margin-bottom:6px}
+.cmp-v{font-size:18px;font-weight:600;font-family:'DM Mono',monospace}
+.cmp-sub{font-size:11px;color:var(--muted)}
+.share-url{font-size:11px;color:var(--muted);word-break:break-all;margin-top:6px}
+footer{text-align:center;padding:2rem 1rem;font-size:11px;color:var(--hint);border-top:1px solid var(--border);margin-top:3rem}
+.panel{display:none}.panel.show{display:block}
+
+[data-tip]{position:relative;cursor:help}
+[data-tip]::after{content:attr(data-tip);position:absolute;bottom:110%;left:50%;transform:translateX(-50%);white-space:nowrap;background:var(--text);color:var(--bg);font-size:11px;font-weight:500;padding:4px 8px;border-radius:6px;pointer-events:none;opacity:0;transition:opacity var(--tr);z-index:99}
+[data-tip]:hover::after{opacity:1}
+
+@media(max-width:640px){.g2{grid-template-columns:1fr}.g4{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:1fr 1fr}.hero{flex-direction:column}.cfg{flex-direction:column}header{padding:0 1rem}.shell{padding:1rem .9rem 3rem}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="5" height="12" rx="1" fill="rgba(255,255,255,.5)"/><rect x="9" y="2" width="5" height="4" rx="1" fill="white"/><rect x="9" y="8" width="5" height="6" rx="1" fill="rgba(255,255,255,.6)"/></svg>
+    </div>
+    <span class="logo-name">Facade<span>IQ</span></span>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <span style="font-size:11px;color:var(--hint)">Units</span>
+    <div class="unit-pill">
+      <button class="unit-btn on" id="btnC" onclick="setUnit('C')">°C</button>
+      <button class="unit-btn" id="btnF" onclick="setUnit('F')">°F</button>
+    </div>
+  </div>
+</header>
+
+<div class="stepbar">
+  <div class="step active" onclick="goStep(0)"><div class="step-n">1</div><span class="step-l">Profile</span></div>
+  <div class="step" onclick="goStep(1)"><div class="step-n">2</div><span class="step-l">Live simulator</span></div>
+  <div class="step" onclick="goStep(2)"><div class="step-n">3</div><span class="step-l">Monthly</span></div>
+  <div class="step" onclick="goStep(3)"><div class="step-n">4</div><span class="step-l">ROI</span></div>
+  <div class="step" onclick="goStep(4)"><div class="step-n">5</div><span class="step-l">Incentives</span></div>
+</div>
+
+<div class="shell">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-save">
+      <div class="lbl">Estimated annual savings</div>
+      <div class="num" id="heroSave">—</div>
+      <div class="sub" id="heroSub">Fill in your profile below to see results</div>
+    </div>
+    <div class="hero-stats">
+      <div class="hstat"><div class="sv" id="heroCO2">—</div><div class="sl">kg CO₂/yr saved</div></div>
+      <div class="hstat"><div class="sv" id="heroPayback">—</div><div class="sl">yr payback</div></div>
+      <div class="hstat"><div class="sv" id="heroRebate">—</div><div class="sl">rebates available</div></div>
+    </div>
+  </div>
+
+  <!-- Config strip -->
+  <div class="cfg">
+    <div class="cfg-f" style="min-width:200px;flex:2">
+      <span class="t-lbl">Country</span>
+      <div class="cntry-wrap">
+        <input class="cntry-search" id="cntrySearch" placeholder="Search country..."
+          autocomplete="off" oninput="onCntryInput()" onfocus="onCntryFocus()"
+          onblur="onCntryBlur()" onkeydown="onCntryKeydown(event)"/>
+        <div class="cntry-drop" id="cntryDrop"></div>
+      </div>
+    </div>
+    <div class="cfg-f" style="min-width:160px;flex:2">
+      <span class="t-lbl">State / Region</span>
+      <select id="regSelect" onchange="calc()"></select>
+    </div>
+    <div class="cfg-f" style="min-width:150px;flex:1.5">
+      <span class="t-lbl">Building type</span>
+      <select id="bldType" onchange="calc()">
+        <option value="apartment">Apartment / flat</option>
+        <option value="townhouse">Townhouse / semi</option>
+        <option value="detached">Detached house</option>
+        <option value="office">Small office</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- ══ STEP 0: Profile ══ -->
+  <div class="panel show" id="p0">
+    <div class="g2">
+      <div class="card">
+        <div class="card-title">Your home</div>
+
+        <!-- Annual bill — text input -->
+        <div class="input-row">
+          <label data-tip="Your total household electricity bill per year">Annual electricity bill</label>
+          <div class="input-field-wrap">
+            <span class="input-prefix" id="billPrefix">$</span>
+            <input class="text-input" id="eBill" type="number" min="0" step="10" value="2200" oninput="calc()" placeholder="e.g. 2200"/>
+            <span class="input-suffix" id="billSuffix">per year</span>
+          </div>
+          <div class="input-help">Typical residential range: about 800 to 6,000 in local currency per year.</div>
+        </div>
+
+        <div class="input-row">
+          <label data-tip="Heating and cooling share of your bill">HVAC share of bill</label>
+          <div class="input-field-wrap">
+            <input class="text-input" id="hvac" type="number" min="20" max="75" step="1" value="45" oninput="calc()" placeholder="e.g. 45"/>
+            <span class="input-suffix">%</span>
+          </div>
+          <div class="input-help">Most homes are around 30% to 60%.</div>
+        </div>
+        <div class="input-row">
+          <label>Window area</label>
+          <div class="input-field-wrap">
+            <input class="text-input" id="wArea" type="number" min="2" max="60" step="1" value="12" oninput="calc()" placeholder="e.g. 12"/>
+            <span class="input-suffix">m²</span>
+          </div>
+          <div class="input-help">Use total glazed area across all windows (about 6 to 30 m² for most homes).</div>
+        </div>
+        <div class="input-row">
+          <label>Number of windows</label>
+          <div class="input-field-wrap">
+            <input class="text-input" id="wCount" type="number" min="1" max="30" step="1" value="4" oninput="calc()" placeholder="e.g. 4"/>
+          </div>
+          <div class="input-help">Count all exterior windows included in the retrofit.</div>
+        </div>
+        <div class="input-row">
+          <label>Building age</label>
+          <div class="input-field-wrap">
+            <input class="text-input" id="bAge" type="number" min="1" max="80" step="1" value="15" oninput="calc()" placeholder="e.g. 15"/>
+            <span class="input-suffix">yrs</span>
+          </div>
+          <div class="input-help">Enter years since construction (or major envelope renovation).</div>
+        </div>
+
+        <div class="div"></div>
+        <div class="t-lbl" style="margin-bottom:8px">Climate zone</div>
+        <div class="chips" id="climChips">
+          <button class="chip on" onclick="setClim(this,'hot')">Hot &amp; sunny</button>
+          <button class="chip" onclick="setClim(this,'temperate')">Temperate</button>
+          <button class="chip" onclick="setClim(this,'cold')">Cold &amp; overcast</button>
+          <button class="chip" onclick="setClim(this,'mixed')">Mixed seasons</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Facade configuration</div>
+        <div class="sl-row"><span class="sl-lbl" data-tip="South-facing gets most direct sun (northern hemisphere)">South-facing windows %</span><input type="range" min="0" max="100" step="5" value="60" id="sFace" oninput="calc()"><span class="sl-val" id="sFaceV">60%</span></div>
+        <div class="sl-row"><span class="sl-lbl">East / West facing %</span><input type="range" min="0" max="100" step="5" value="30" id="ewFace" oninput="calc()"><span class="sl-val" id="ewFaceV">30%</span></div>
+        <div class="sl-row"><span class="sl-lbl" data-tip="Existing trees, blinds or overhangs">Existing shading</span><input type="range" min="0" max="80" step="5" value="10" id="exShade" oninput="calc()"><span class="sl-val" id="exShadeV">10%</span></div>
+        <div class="div"></div>
+        <div class="t-lbl" style="margin-bottom:8px">Panel response mode</div>
+        <div class="chips" id="modeChips">
+          <button class="chip on" onclick="setMode(this,'auto')">Auto-adaptive</button>
+          <button class="chip" onclick="setMode(this,'daylight')">Daylight priority</button>
+          <button class="chip" onclick="setMode(this,'thermal')">Thermal priority</button>
+        </div>
+        <div class="div"></div>
+        <div class="t-lbl" style="margin-bottom:6px">Building type</div>
+        <div id="bldNote" style="font-size:12px;color:var(--muted);line-height:1.7"></div>
+        <div class="warn-note" id="inputWarn"></div>
+        <div class="info-note" style="margin-top:12px">
+          The annual estimate above uses your climate zone and building profile as proxies
+          for the sensor decisions the system would make over a full year.
+          Use the <strong>Live simulator</strong> tab to see real-time panel decisions
+          and instantaneous savings from specific conditions.
+        </div>
+      </div>
+    </div>
+
+    <div class="g4" id="metricRow"></div>
+    <div class="card">
+      <div class="card-title">Annual savings breakdown</div>
+      <div id="barsEl"></div>
+      <div class="div"></div>
+      <div class="card-title" style="margin-bottom:10px">Scenario compare — baseline vs adaptive facade</div>
+      <div id="compareEl"></div>
+      <div class="brow">
+        <button class="btn btn-p" onclick="exportPDF()">Export PDF report</button>
+        <button class="btn btn-s" onclick="copyShareLink()">Copy share link</button>
+        <button class="btn btn-s" onclick="goStep(3)">View ROI →</button>
+      </div>
+      <div class="share-url" id="shareUrl"></div>
+    </div>
+  </div>
+
+  <!-- ══ STEP 1: Live simulator ══ -->
+  <div class="panel" id="p1">
+
+    <!-- Electricity rate input -->
+    <div class="card" style="margin-bottom:1rem">
+      <div class="card-title">Your electricity rate — needed to calculate live savings</div>
+      <div style="display:flex;align-items:flex-end;gap:1rem;flex-wrap:wrap">
+        <div class="input-row" style="flex:1;min-width:200px;margin-bottom:0">
+          <label>Rate you pay per kWh</label>
+          <div class="input-field-wrap">
+            <span class="input-prefix" id="ratePrefix">$</span>
+            <input class="text-input" id="elecRate" type="number" min="0" step="0.01" value="0.13" oninput="sim()" placeholder="e.g. 0.13"/>
+            <span class="input-suffix" id="rateSuffix">per kWh</span>
+          </div>
+          <div class="input-help">Common residential range: 0.08 to 0.40 per kWh.</div>
+        </div>
+        <div class="input-row" style="flex:1;min-width:200px;margin-bottom:0">
+          <label data-tip="Average power your HVAC system uses when running">HVAC system power (kW)</label>
+          <div class="input-field-wrap">
+            <input class="text-input" id="hvacKw" type="number" min="0.5" max="20" step="0.1" value="3.5" oninput="sim()" placeholder="e.g. 3.5"/>
+            <span class="input-suffix">kW</span>
+          </div>
+          <div class="input-help">Typical homes: 2.0 to 5.0 kW while running.</div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);max-width:240px;line-height:1.6;padding-bottom:4px">
+          Typical home HVAC: 2–5 kW. Check your unit's label or energy guide sticker.
+        </div>
+      </div>
+      <div class="div"></div>
+      <div class="card-title" style="margin-bottom:.6rem">Tariff mode (for realistic live savings)</div>
+      <div class="chips" id="tariffChips" style="margin-bottom:.8rem">
+        <button class="chip on" onclick="setTariffMode(this,'flat')">Flat rate</button>
+        <button class="chip" onclick="setTariffMode(this,'tou')">Peak / off-peak</button>
+      </div>
+      <div class="g3">
+        <div class="input-row" style="margin-bottom:0">
+          <label>Peak rate per kWh</label>
+          <div class="input-field-wrap">
+            <span class="input-prefix" id="peakPrefix">$</span>
+            <input class="text-input" id="peakRate" type="number" min="0" step="0.01" value="0.22" oninput="sim()"/>
+          </div>
+        </div>
+        <div class="input-row" style="margin-bottom:0">
+          <label>Off-peak rate per kWh</label>
+          <div class="input-field-wrap">
+            <span class="input-prefix" id="offPeakPrefix">$</span>
+            <input class="text-input" id="offPeakRate" type="number" min="0" step="0.01" value="0.10" oninput="sim()"/>
+          </div>
+        </div>
+        <div class="input-row" style="margin-bottom:0">
+          <label>Current hour (0-23)</label>
+          <div class="input-field-wrap">
+            <input class="text-input" id="curHour" type="number" min="0" max="23" step="1" value="14" oninput="sim()"/>
+            <span class="input-suffix">hour</span>
+          </div>
+        </div>
+      </div>
+      <div class="g2" style="margin-top:.6rem;margin-bottom:0">
+        <div class="input-row" style="margin-bottom:0">
+          <label>Peak starts at</label>
+          <div class="input-field-wrap">
+            <input class="text-input" id="peakStart" type="number" min="0" max="23" step="1" value="16" oninput="sim()"/>
+            <span class="input-suffix">hour</span>
+          </div>
+        </div>
+        <div class="input-row" style="margin-bottom:0">
+          <label>Peak ends at</label>
+          <div class="input-field-wrap">
+            <input class="text-input" id="peakEnd" type="number" min="0" max="23" step="1" value="21" oninput="sim()"/>
+            <span class="input-suffix">hour</span>
+          </div>
+        </div>
+      </div>
+      <div class="info-note" id="tariffNote" style="margin-top:.7rem">Using flat rate.</div>
+    </div>
+
+    <div class="card" style="margin-bottom:1rem">
+      <div class="card-title">Weather auto-fill (city or ZIP)</div>
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+        <div class="input-row" style="flex:1;min-width:220px;margin-bottom:0">
+          <label>Location query</label>
+          <div class="input-field-wrap">
+            <input class="text-input" id="weatherQuery" type="text" placeholder="e.g. Los Angeles or 90001"/>
+          </div>
+        </div>
+        <button class="btn btn-s" onclick="loadWeather()">Auto-fill weather</button>
+      </div>
+      <div class="input-help">Uses Open-Meteo geocoding + forecast APIs (no key needed).</div>
+      <div class="info-note" id="weatherStatus" style="margin-top:.6rem">Enter a city or ZIP and click auto-fill.</div>
+    </div>
+
+    <div class="g2">
+      <div class="card">
+        <div class="card-title">Estimated conditions — drag to simulate</div>
+        <div class="sl-row"><span class="sl-lbl">Outside temperature</span><input type="range" min="-20" max="50" step="1" value="32" id="oTemp" oninput="sim()"><span class="sl-val" id="oTempV">32°C</span></div>
+        <div class="sl-row"><span class="sl-lbl">Inside temperature</span><input type="range" min="10" max="35" step="1" value="24" id="iTemp" oninput="sim()"><span class="sl-val" id="iTempV">24°C</span></div>
+        <div class="sl-row"><span class="sl-lbl">Outside light (lux)</span><input type="range" min="0" max="100000" step="1000" value="65000" id="oLux" oninput="sim()"><span class="sl-val" id="oLuxV">65,000</span></div>
+        <div class="sl-row"><span class="sl-lbl">Inside light (lux)</span><input type="range" min="0" max="5000" step="50" value="300" id="iLux" oninput="sim()"><span class="sl-val" id="iLuxV">300</span></div>
+        <div class="sgrid" id="sgrid"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Panel position &amp; live saving</div>
+
+        <!-- Panel visualiser -->
+        <div class="pviz">
+          <div class="panel-scene">
+            <div class="wall-line"></div>
+            <div class="panel-pivot"></div>
+            <!-- Panel rendered as a rotated bar via JS -->
+            <div id="panelBar" class="panel-slat-3d" style="width:90px;background:var(--g500)"></div>
+            <!-- Angle label -->
+            <div id="angleLabel" style="position:absolute;left:120px;top:50%;transform:translateY(-50%);font-size:22px;font-weight:600;font-family:'DM Mono',monospace;color:var(--g600)">90°</div>
+          </div>
+        </div>
+
+        <!-- Openness bar -->
+        <div class="openness-bar-wrap">
+          <div class="openness-bar-track">
+            <div class="openness-bar-fill" id="opennessBar" style="background:var(--g500)"></div>
+          </div>
+          <div class="openness-label">
+            <span>Closed (0°)</span>
+            <span id="opennessLabel" style="font-weight:600;color:var(--g600)">100% open</span>
+            <span>Open (90°)</span>
+          </div>
+        </div>
+
+        <div id="simStatus" style="margin:10px 0"></div>
+
+        <!-- Live saving -->
+        <div class="live-saving" id="liveSavingBox">
+          <div class="ls-row">
+            <span class="ls-label">Saving right now</span>
+            <span class="ls-value" id="liveRate">—</span>
+          </div>
+          <div class="ls-row" style="margin-bottom:0">
+            <span class="ls-label">If this continues for a year</span>
+            <span class="ls-value" style="font-size:14px" id="liveAnnual">—</span>
+          </div>
+          <div style="margin-top:8px;font-size:11px;color:var(--muted)" id="liveExplain"></div>
+        </div>
+
+        <div class="div"></div>
+        <div class="t-lbl" style="margin-bottom:8px">Why the panel is here</div>
+        <div id="simLog"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ STEP 2: Monthly ══ -->
+  <div class="panel" id="p2">
+    <div class="card">
+      <div class="card-title">Monthly savings breakdown — full year cycle</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:1rem;font-size:12px;color:var(--muted)">
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#e8930a"></span>Cooling</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#1d9e89"></span>Heating</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#7c5ede"></span>Daylight</span>
+      </div>
+      <div class="cw" style="height:260px"><canvas id="mChart"></canvas></div>
+      <div class="div"></div>
+      <div id="mInsight" style="font-size:12px;color:var(--muted);line-height:1.8"></div>
+    </div>
+  </div>
+
+  <!-- ══ STEP 3: ROI ══ -->
+  <div class="panel" id="p3">
+    <div class="g2">
+      <div class="card">
+        <div class="card-title">Installation parameters</div>
+        <div class="input-row">
+          <label>Install cost per m²</label>
+          <div class="input-field-wrap">
+            <span class="input-prefix">Cost</span>
+            <input class="text-input" id="cpm" type="number" min="50" max="500" step="10" value="150" oninput="calcROI()"/>
+          </div>
+          <div class="input-help">Use your contractor quote if available (commonly 100 to 250 in local currency per m²).</div>
+        </div>
+        <div class="input-row">
+          <label>Annual maintenance</label>
+          <div class="input-field-wrap">
+            <span class="input-prefix">Cost</span>
+            <input class="text-input" id="maint" type="number" min="0" max="600" step="20" value="80" oninput="calcROI()"/>
+          </div>
+          <div class="input-help">Typical yearly maintenance is often 40 to 200 in local currency.</div>
+        </div>
+        <div class="input-row">
+          <label>Energy price growth</label>
+          <div class="input-field-wrap">
+            <input class="text-input" id="egrow" type="number" min="0" max="12" step="0.5" value="3" oninput="calcROI()"/>
+            <span class="input-suffix">%</span>
+          </div>
+          <div class="input-help">Most long-term assumptions are 2% to 5% per year.</div>
+        </div>
+        <div class="div"></div>
+        <div id="roiCards"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">10-year cumulative savings</div>
+        <div class="cw"><canvas id="rChart"></canvas></div>
+        <div class="div"></div>
+        <div id="roiSum" style="font-size:12px;color:var(--muted);line-height:2"></div>
+      </div>
+    </div>
+    <div class="brow" style="justify-content:center">
+      <button class="btn btn-p" onclick="exportPDF()">Export PDF report</button>
+      <button class="btn btn-s" onclick="goStep(4)">View incentives →</button>
+    </div>
+  </div>
+
+  <!-- ══ STEP 4: Incentives ══ -->
+  <div class="panel" id="p4">
+    <div class="g2">
+      <div class="card">
+        <div class="card-title">Available programmes — <span id="regionLabel"></span></div>
+        <div id="rebList"></div>
+        <div class="div"></div>
+        <div class="t-lbl" style="margin-bottom:6px">Total estimated rebate value</div>
+        <div id="rebTotal" style="font-size:26px;font-weight:600;font-family:'DM Mono',monospace;color:var(--g600);margin-bottom:4px"></div>
+        <p style="font-size:11px;color:var(--hint)">Estimates only. Confirm with local authorities.</p>
+      </div>
+      <div class="card">
+        <div class="card-title">Net investment after rebates</div>
+        <div id="rebCalc" style="font-size:13px;color:var(--muted);line-height:2.2"></div>
+        <div class="div"></div>
+        <div class="t-lbl" style="margin-bottom:8px">Carbon credits</div>
+        <div id="carbonEl"></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /shell -->
+
+<footer>FacadeIQ — Adaptive Facade System &nbsp;·&nbsp; Results are estimates. Actual savings vary by usage and installation.</footer>
+
+<script src="world-regions.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   ANGLE CONVENTION — used throughout this file:
+   0°   = panel face-on to sun = FULLY CLOSED (sin(0°)   = 0 = 0% transmission)
+   90°  = panel edge-on to sun = FULLY OPEN   (sin(90°)  = 1 = 100% transmission)
+   180° = panel face-on again  = FULLY CLOSED (sin(180°) = 0 = 0% transmission)
+   Motor can stop at EITHER 0° OR 180° — firmware picks nearest to current angle.
+   openness = sin(angle_radians) = fraction of light/heat that passes through.
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Constants ─────────────────────────────────────────────────────────── */
+const BLD = {
+  apartment: {am:.6, hm:.85, or:.7,  note:'Shared walls reduce heat transfer surface. Facade covers window area only.'},
+  townhouse:  {am:.85,hm:.95, or:.9,  note:'Semi-detached — moderate exposure. Good candidate across 2–3 walls.'},
+  detached:   {am:1,  hm:1,   or:1,   note:'Full solar exposure on all sides — highest savings potential.'},
+  office:     {am:1.3,hm:1.2, or:1.1, note:'Large glazing ratios and peak cooling loads — strong facade candidate.'}
+};
+const CLIM = {
+  hot:       {cl:.32,ht:.04,dl:.18,mo:[.4,.5,.7,.9,1.2,1.4,1.4,1.3,1.1,.8,.5,.3]},
+  temperate: {cl:.18,ht:.12,dl:.22,mo:[.3,.4,.6,.9,1.1,1.3,1.4,1.2,.9,.6,.3,.2]},
+  cold:      {cl:.06,ht:.28,dl:.15,mo:[.2,.3,.5,.8,1.1,1.4,1.5,1.3,1,.6,.3,.1]},
+  mixed:     {cl:.22,ht:.18,dl:.20,mo:[.4,.5,.7,1,1.2,1.3,1.3,1.2,1,.7,.4,.3]}
+};
+const MB = {auto:1, daylight:.9, thermal:1.1};
+
+// Decision thresholds
+const T_HOT   = 28;   // °C
+const T_DIFF  = 3;    // °C delta
+const T_COLD  = 10;   // °C outside
+const T_COLD_IN = 20; // °C inside
+const L_GLARE_OUT = 50000; // lux
+const L_GLARE_IN  = 800;
+const L_LOW_IN    = 200;
+const L_AVAIL_OUT = 5000;
+
+// Target angles (0/180=closed, 90=open)
+const A_CLOSED_LOW  = 0;   // closed position on the 0° side
+const A_CLOSED_HIGH = 180; // closed position on the 180° side
+const A_PARTIAL     = 35;  // sin(35°)=0.57 — partial block
+const A_NEUTRAL     = 60;  // sin(60°)=0.87 — balanced default
+const A_DAYLIGHT    = 88;  // sin(88°)≈1.0  — max open for daylight
+const A_SOLAR_GAIN  = 85;  // sin(85°)≈1.0  — max open for heat capture
+const A_OPEN        = 90;  // sin(90°)=1.0  — fully open
+
+/* ── State ─────────────────────────────────────────────────────────────── */
+let clim='hot', mode='auto', unit='C';
+let curCntryCode='US', curCntryName='United States', curReg='California';
+let lastSave=0, lastInstall=0, lastAngle=A_NEUTRAL;
+let mChartInst=null, rChartInst=null;
+let allCntries=[], dropOpen=false, highlightIdx=-1;
+let tariffMode='flat';
+const STATE_KEY='facadeiq-v1-state';
+
+/* ── Helpers ────────────────────────────────────────────────────────────── */
+const $=id=>document.getElementById(id);
+const vn=id=>parseFloat($(id).value)||0;
+const clamp=(v,min,max)=>Math.min(max,Math.max(min,v));
+function sym(){return WORLD[curCntryCode]?.sym||'$'}
+function fc(v){
+  const s=sym();
+  if(curCntryCode==='IN') return s+Math.round(v).toLocaleString('en-IN');
+  if(['JP','KR','ID'].includes(curCntryCode)) return s+Math.round(v).toLocaleString();
+  return s+Math.round(v).toLocaleString();
+}
+const cToF=c=>Math.round(c*9/5+32);
+const fToC=f=>Math.round((f-32)*5/9);
+const ft=c=>unit==='F'?cToF(c)+'°F':c+'°C';
+
+// KEY function: openness from angle using correct convention
+// sin(0°)=0 (closed), sin(90°)=1 (open), sin(180°)=0 (closed)
+const openness=a=>Math.sin(a*Math.PI/180);
+
+// Choose closest closed angle from current position
+function chooseClosedAngle(current){
+  return current <= 90 ? A_CLOSED_LOW : A_CLOSED_HIGH;
+}
+
+/* ── Country search ─────────────────────────────────────────────────────── */
+function initCountrySearch(){
+  allCntries=Object.entries(WORLD).map(([k,v])=>({code:k,name:v.name})).sort((a,b)=>a.name.localeCompare(b.name));
+}
+function getFlagEmoji(code){
+  try{return [...code.toUpperCase()].map(c=>String.fromCodePoint(c.charCodeAt(0)+127397)).join('')}catch{return''}
+}
+function buildDrop(filter){
+  const drop=$('cntryDrop');
+  const q=(filter||'').trim().toLowerCase();
+  const filtered=q?allCntries.filter(c=>c.name.toLowerCase().includes(q)||c.code.toLowerCase().startsWith(q)):allCntries;
+  if(!filtered.length){drop.innerHTML=`<div style="padding:10px 14px;font-size:12px;color:var(--hint)">No countries found</div>`;return;}
+  drop.innerHTML=filtered.map((c,i)=>`<div class="cntry-opt${c.code===curCntryCode?' sel':''}" data-code="${c.code}" data-name="${c.name.replace(/"/g,'&quot;')}" data-idx="${i}">${getFlagEmoji(c.code)} ${c.name}</div>`).join('');
+  drop.querySelectorAll('.cntry-opt').forEach(el=>{
+    el.addEventListener('mousedown',e=>{e.preventDefault();selectCntry(el.dataset.code,el.dataset.name);});
+  });
+  highlightIdx=-1;
+}
+function openDrop(){dropOpen=true;$('cntryDrop').classList.add('open');buildDrop($('cntrySearch').value)}
+function closeDrop(){dropOpen=false;highlightIdx=-1;$('cntryDrop').classList.remove('open')}
+function onCntryInput(){openDrop()}
+function onCntryFocus(){$('cntrySearch').select();openDrop()}
+function onCntryBlur(){setTimeout(()=>{if(!dropOpen)return;closeDrop();$('cntrySearch').value=curCntryName;},180)}
+function onCntryKeydown(e){
+  const opts=Array.from($('cntryDrop').querySelectorAll('.cntry-opt'));
+  if(!opts.length)return;
+  if(e.key==='ArrowDown'){e.preventDefault();highlightIdx=Math.min(highlightIdx+1,opts.length-1);applyHL(opts);}
+  else if(e.key==='ArrowUp'){e.preventDefault();highlightIdx=Math.max(highlightIdx-1,0);applyHL(opts);}
+  else if(e.key==='Enter'&&highlightIdx>=0){e.preventDefault();const el=opts[highlightIdx];selectCntry(el.dataset.code,el.dataset.name);}
+  else if(e.key==='Escape'){closeDrop();$('cntrySearch').value=curCntryName;}
+}
+function applyHL(opts){opts.forEach((el,i)=>{el.classList.toggle('sel',i===highlightIdx);if(i===highlightIdx)el.scrollIntoView({block:'nearest'});});}
+
+function selectCntry(code,name){
+  curCntryCode=code; curCntryName=name;
+  $('cntrySearch').value=name;
+  closeDrop();
+  populateRegions();
+  const cd=WORLD[code];
+  if(cd){
+    // Update currency prefix on bill and rate inputs
+    $('billPrefix').textContent=cd.sym||'$';
+    $('ratePrefix').textContent=cd.sym||'$';
+    if($('peakPrefix')) $('peakPrefix').textContent=cd.sym||'$';
+    if($('offPeakPrefix')) $('offPeakPrefix').textContent=cd.sym||'$';
+    // Update default bill value for the country
+    $('eBill').value=cd.def||2200;
+    // Update default electricity rate per country (approx)
+    const rates={US:.13,AU:.28,GB:.31,DE:.35,FR:.22,AE:.09,SG:.22,CA:.12,IN:.08,JP:.27,KR:.12,NZ:.27,ZA:.13,NG:.08,EG:.05};
+    $('elecRate').value=rates[code]||.15;
+    setClimDefault(cd.clim||'mixed');
+    $('billSuffix').textContent='per year';
+    $('rateSuffix').textContent='per kWh';
+  }
+  calc();
+}
+
+function populateRegions(){
+  const cd=WORLD[curCntryCode];
+  const rsel=$('regSelect');
+  if(cd&&cd.reg&&cd.reg.length){
+    rsel.innerHTML=cd.reg.map(r=>`<option value="${r}">${r}</option>`).join('');
+    curReg=cd.reg[0];
+  } else {
+    rsel.innerHTML=`<option value="National">National</option>`;
+    curReg='National';
+  }
+  $('regionLabel').textContent=curReg+', '+curCntryName;
+}
+
+/* ── Climate & mode ─────────────────────────────────────────────────────── */
+function setClimDefault(c){
+  clim=c;
+  document.querySelectorAll('#climChips .chip').forEach((b,i)=>b.classList.toggle('on',['hot','temperate','cold','mixed'][i]===c));
+}
+function setClim(el,c){clim=c;document.querySelectorAll('#climChips .chip').forEach(b=>b.classList.remove('on'));el.classList.add('on');calc();}
+function setMode(el,m){mode=m;document.querySelectorAll('#modeChips .chip').forEach(b=>b.classList.remove('on'));el.classList.add('on');calc();}
+function setTariffMode(el,m){
+  tariffMode=m;
+  document.querySelectorAll('#tariffChips .chip').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  sim();
+}
+
+/* ── Unit toggle ────────────────────────────────────────────────────────── */
+function setUnit(u){
+  unit=u;$('btnC').classList.toggle('on',u==='C');$('btnF').classList.toggle('on',u==='F');
+  const ot=$('oTemp'),it=$('iTemp');
+  if(u==='F'){ot.min=-4;ot.max=122;ot.step=2;it.min=50;it.max=95;ot.value=cToF(parseInt(ot.value));it.value=cToF(parseInt(it.value));}
+  else{ot.min=-20;ot.max=50;ot.step=1;it.min=10;it.max=35;ot.value=fToC(parseInt(ot.value));it.value=fToC(parseInt(it.value));}
+  sim();
+}
+
+/* ── Stepper ────────────────────────────────────────────────────────────── */
+function goStep(n){
+  document.querySelectorAll('.step').forEach((el,i)=>{el.classList.toggle('active',i===n);el.classList.toggle('done',i<n);});
+  document.querySelectorAll('.panel').forEach((el,i)=>el.classList.toggle('show',i===n));
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function showWarn(msg){
+  const el=$('inputWarn');
+  if(!msg){el.style.display='none';el.textContent='';return;}
+  el.textContent=msg;
+  el.style.display='block';
+}
+
+function sanitizeProfile(){
+  const eBillEl=$('eBill'), hvacEl=$('hvac'), areaEl=$('wArea'), cntEl=$('wCount');
+  const ageEl=$('bAge'), sfEl=$('sFace'), ewEl=$('ewFace'), shadeEl=$('exShade');
+  eBillEl.value=clamp(vn('eBill'),0,200000);
+  hvacEl.value=clamp(vn('hvac'),20,75);
+  areaEl.value=clamp(vn('wArea'),2,60);
+  cntEl.value=clamp(vn('wCount'),1,30);
+  ageEl.value=clamp(vn('bAge'),1,80);
+  sfEl.value=clamp(vn('sFace'),0,100);
+  ewEl.value=clamp(vn('ewFace'),0,100);
+  shadeEl.value=clamp(vn('exShade'),0,80);
+
+  const sf=vn('sFace');
+  const ew=vn('ewFace');
+  const total=sf+ew;
+  if(total>100){
+    const corrected=Math.max(0,100-sf);
+    ewEl.value=corrected;
+    showWarn(`Orientation adjusted: South (${Math.round(sf)}%) + East/West (${Math.round(ew)}%) exceeded 100%. East/West set to ${Math.round(corrected)}%.`);
+  } else {
+    showWarn('');
+  }
+}
+
+function sanitizeTariff(){
+  if(!$('elecRate')) return;
+  $('elecRate').value=clamp(vn('elecRate'),0,5);
+  $('peakRate').value=clamp(vn('peakRate'),0,5);
+  $('offPeakRate').value=clamp(vn('offPeakRate'),0,5);
+  $('curHour').value=clamp(Math.round(vn('curHour')),0,23);
+  $('peakStart').value=clamp(Math.round(vn('peakStart')),0,23);
+  $('peakEnd').value=clamp(Math.round(vn('peakEnd')),0,23);
+}
+
+function isPeakHour(hour,start,end){
+  if(start===end)return false;
+  if(start<end)return hour>=start&&hour<end;
+  return hour>=start||hour<end;
+}
+
+function getActiveTariffRate(){
+  sanitizeTariff();
+  if(tariffMode==='flat') return {rate:vn('elecRate'),label:'Flat rate'};
+  const hr=Math.round(vn('curHour'));
+  const start=Math.round(vn('peakStart'));
+  const end=Math.round(vn('peakEnd'));
+  const isPeak=isPeakHour(hr,start,end);
+  return {
+    rate:isPeak?vn('peakRate'):vn('offPeakRate'),
+    label:isPeak?`Peak (${hr}:00)`:`Off-peak (${hr}:00)`
+  };
+}
+
+function saveState(){
+  try{
+    const state={
+      curCntryCode,curCntryName,curReg,clim,mode,unit,
+      eBill:vn('eBill'),hvac:vn('hvac'),wArea:vn('wArea'),wCount:vn('wCount'),bAge:vn('bAge'),
+      sFace:vn('sFace'),ewFace:vn('ewFace'),exShade:vn('exShade'),
+      bldType:$('bldType').value,
+      elecRate:vn('elecRate'),hvacKw:vn('hvacKw'),
+      oTemp:vn('oTemp'),iTemp:vn('iTemp'),oLux:vn('oLux'),iLux:vn('iLux'),
+      cpm:vn('cpm'),maint:vn('maint'),egrow:vn('egrow'),
+      tariffMode,peakRate:vn('peakRate'),offPeakRate:vn('offPeakRate'),
+      peakStart:vn('peakStart'),peakEnd:vn('peakEnd'),curHour:vn('curHour'),
+      weatherQuery:$('weatherQuery')?.value||''
+    };
+    localStorage.setItem(STATE_KEY,JSON.stringify(state));
+  }catch{}
+}
+
+function loadState(){
+  try{
+    const raw=localStorage.getItem(STATE_KEY);
+    if(!raw)return;
+    const s=JSON.parse(raw);
+    if(s.curCntryCode&&WORLD[s.curCntryCode]){
+      curCntryCode=s.curCntryCode;
+      curCntryName=s.curCntryName||WORLD[s.curCntryCode].name;
+      $('cntrySearch').value=curCntryName;
+      populateRegions();
+      if(s.curReg){
+        const has=Array.from($('regSelect').options).some(o=>o.value===s.curReg);
+        if(has){$('regSelect').value=s.curReg;curReg=s.curReg;}
+      }
+      selectCntry(curCntryCode,curCntryName);
+      if(s.curReg){
+        const has=Array.from($('regSelect').options).some(o=>o.value===s.curReg);
+        if(has){$('regSelect').value=s.curReg;curReg=s.curReg;}
+      }
+    }
+    [['eBill','eBill'],['hvac','hvac'],['wArea','wArea'],['wCount','wCount'],['bAge','bAge'],
+     ['sFace','sFace'],['ewFace','ewFace'],['exShade','exShade'],['elecRate','elecRate'],
+     ['hvacKw','hvacKw'],['oTemp','oTemp'],['iTemp','iTemp'],['oLux','oLux'],['iLux','iLux'],
+     ['cpm','cpm'],['maint','maint'],['egrow','egrow'],['peakRate','peakRate'],['offPeakRate','offPeakRate'],
+     ['peakStart','peakStart'],['peakEnd','peakEnd'],['curHour','curHour']].forEach(([k,id])=>{
+      if(s[k]!==undefined&&$(id))$(id).value=s[k];
+    });
+    if(s.weatherQuery!==undefined&&$('weatherQuery'))$('weatherQuery').value=s.weatherQuery;
+    if(s.bldType&&$('bldType').querySelector(`option[value="${s.bldType}"]`))$('bldType').value=s.bldType;
+    if(['hot','temperate','cold','mixed'].includes(s.clim))setClimDefault(s.clim);
+    if(['auto','daylight','thermal'].includes(s.mode)){
+      mode=s.mode;
+      document.querySelectorAll('#modeChips .chip').forEach((b,i)=>b.classList.toggle('on',['auto','daylight','thermal'][i]===mode));
+    }
+    if(['flat','tou'].includes(s.tariffMode||'')){
+      tariffMode=s.tariffMode;
+      document.querySelectorAll('#tariffChips .chip').forEach((b,i)=>b.classList.toggle('on',['flat','tou'][i]===tariffMode));
+    }
+    if(['C','F'].includes(s.unit)&&s.unit!==unit)setUnit(s.unit);
+  }catch{}
+}
+
+function encodeStatePayload(){
+  // Compact schema to keep shared URLs shorter.
+  const payload=[
+    1, // schema version
+    curCntryCode, curReg, clim, mode, unit, tariffMode, $('bldType').value,
+    vn('eBill'), vn('hvac'), vn('wArea'), vn('wCount'), vn('bAge'),
+    vn('sFace'), vn('ewFace'), vn('exShade'),
+    vn('elecRate'), vn('hvacKw'), vn('oTemp'), vn('iTemp'), vn('oLux'), vn('iLux'),
+    vn('cpm'), vn('maint'), vn('egrow'),
+    vn('peakRate'), vn('offPeakRate'), vn('peakStart'), vn('peakEnd'), vn('curHour')
+  ];
+  const b64=btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+  return b64.replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+
+function applyStatePayload(s){
+  if(Array.isArray(s)){
+    const p=s;
+    const obj={
+      curCntryCode:p[1], curReg:p[2], clim:p[3], mode:p[4], unit:p[5], tariffMode:p[6], bldType:p[7],
+      eBill:p[8], hvac:p[9], wArea:p[10], wCount:p[11], bAge:p[12],
+      sFace:p[13], ewFace:p[14], exShade:p[15],
+      elecRate:p[16], hvacKw:p[17], oTemp:p[18], iTemp:p[19], oLux:p[20], iLux:p[21],
+      cpm:p[22], maint:p[23], egrow:p[24],
+      peakRate:p[25], offPeakRate:p[26], peakStart:p[27], peakEnd:p[28], curHour:p[29]
+    };
+    s=obj;
+  }
+  if(s.curCntryCode&&WORLD[s.curCntryCode]) selectCntry(s.curCntryCode,WORLD[s.curCntryCode].name);
+  [['eBill','eBill'],['hvac','hvac'],['wArea','wArea'],['wCount','wCount'],['bAge','bAge'],
+   ['sFace','sFace'],['ewFace','ewFace'],['exShade','exShade'],['elecRate','elecRate'],
+   ['hvacKw','hvacKw'],['oTemp','oTemp'],['iTemp','iTemp'],['oLux','oLux'],['iLux','iLux'],
+   ['cpm','cpm'],['maint','maint'],['egrow','egrow'],['peakRate','peakRate'],['offPeakRate','offPeakRate'],
+   ['peakStart','peakStart'],['peakEnd','peakEnd'],['curHour','curHour']].forEach(([k,id])=>{
+    if(s[k]!==undefined&&$(id))$(id).value=s[k];
+  });
+  if(s.bldType&&$('bldType').querySelector(`option[value="${s.bldType}"]`))$('bldType').value=s.bldType;
+  if(['hot','temperate','cold','mixed'].includes(s.clim))setClimDefault(s.clim);
+  if(['auto','daylight','thermal'].includes(s.mode)){mode=s.mode;document.querySelectorAll('#modeChips .chip').forEach((b,i)=>b.classList.toggle('on',['auto','daylight','thermal'][i]===mode));}
+  if(['flat','tou'].includes(s.tariffMode||'')){tariffMode=s.tariffMode;document.querySelectorAll('#tariffChips .chip').forEach((b,i)=>b.classList.toggle('on',['flat','tou'][i]===tariffMode));}
+  if(s.curReg){const has=Array.from($('regSelect').options).some(o=>o.value===s.curReg);if(has){$('regSelect').value=s.curReg;curReg=s.curReg;}}
+  if(['C','F'].includes(s.unit)&&s.unit!==unit)setUnit(s.unit);
+}
+
+function loadStateFromUrl(){
+  try{
+    const p=new URLSearchParams(window.location.search).get('s');
+    if(!p)return;
+    const b64=p.replace(/-/g,'+').replace(/_/g,'/');
+    const padded=b64+'==='.slice((b64.length+3)%4);
+    const decoded=decodeURIComponent(escape(atob(padded)));
+    applyStatePayload(JSON.parse(decoded));
+  }catch{}
+}
+
+function copyShareLink(){
+  try{
+    const url=new URL(window.location.href);
+    url.searchParams.set('s',encodeStatePayload());
+    const out=url.toString();
+    $('shareUrl').textContent=out;
+    if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(out);
+  }catch{
+    $('shareUrl').textContent='Could not generate share URL in this browser.';
+  }
+}
+
+async function loadWeather(){
+  const q=($('weatherQuery').value||'').trim();
+  if(!q){$('weatherStatus').textContent='Please enter a city or ZIP first.';return;}
+  $('weatherStatus').textContent='Loading weather data...';
+  try{
+    const g=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=1&language=en&format=json`).then(r=>r.json());
+    if(!g.results||!g.results.length){$('weatherStatus').textContent='No matching location found.';return;}
+    const loc=g.results[0];
+    const w=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&hourly=temperature_2m,shortwave_radiation&current=temperature_2m&timezone=auto`).then(r=>r.json());
+    const now=Math.round(w.current?.temperature_2m ?? 24);
+    const t=(w.hourly?.temperature_2m||[]).slice(0,24);
+    const r=(w.hourly?.shortwave_radiation||[]).slice(0,24);
+    const avgT=t.length?t.reduce((a,b)=>a+b,0)/t.length:now;
+    const avgR=r.length?r.reduce((a,b)=>a+b,0)/r.length:250;
+    const outLux=clamp(Math.round(avgR*120),0,100000);
+    $('oTemp').value=clamp(now,parseInt($('oTemp').min),parseInt($('oTemp').max));
+    $('iTemp').value=clamp(now-8,parseInt($('iTemp').min),parseInt($('iTemp').max));
+    $('oLux').value=outLux;
+    $('iLux').value=clamp(Math.round(outLux*0.01),0,5000);
+    const autoClim=avgT>=26?'hot':avgT<=10?'cold':avgT>=16?'temperate':'mixed';
+    setClimDefault(autoClim);
+    $('weatherStatus').textContent=`Loaded weather for ${loc.name}${loc.country?`, ${loc.country}`:''}. Next-24h avg ${avgT.toFixed(1)}°C. Climate set to "${autoClim}".`;
+    calc();sim();
+  }catch{
+    $('weatherStatus').textContent='Weather lookup failed. Please try another location.';
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAIN CALCULATION — annual estimate
+   Uses building profile as proxy for what the system would do over a full year.
+   This is the pre-installation "should I buy it?" estimate.
+═══════════════════════════════════════════════════════════════════════════ */
+function calc(){
+  sanitizeProfile();
+  curReg=$('regSelect').value||curReg;
+  $('regionLabel').textContent=curReg+', '+curCntryName;
+
+  const bill=vn('eBill'), hvac=vn('hvac')/100;
+  const sf=vn('sFace')/100, ew=vn('ewFace')/100, age=vn('bAge'), sh=vn('exShade')/100;
+  const area=vn('wArea'), cnt=vn('wCount');
+  const bt=$('bldType').value, bf=BLD[bt], cf=CLIM[clim], mb=MB[mode];
+
+  $('sFaceV').textContent=Math.round(vn('sFace'))+'%';
+  $('ewFaceV').textContent=Math.round(vn('ewFace'))+'%';
+  $('exShadeV').textContent=Math.round(vn('exShade'))+'%';
+  $('bldNote').textContent=bf.note;
+
+  const hvacCost=bill*hvac;
+  const ob=(sf*.4+ew*.2)*bf.or;
+  const af=Math.min(1.3,1+age*.008);
+  const sp=1-sh*.5;
+
+  // Three saving streams — see PDF Section 3 for full formula explanation
+  const cs=hvacCost*cf.cl*ob*af*sp*mb*bf.hm;   // cooling
+  const hs=hvacCost*cf.ht*.6*af*mb*bf.hm;        // heating (passive solar gain)
+  const ds=bill*.12*cf.dl*ob*bf.am;               // daylight
+
+  const tot=cs+hs+ds;
+  lastSave=tot;
+  const pct=Math.round((tot/bill)*100);
+  const co2=Math.round(tot*(WORLD[curCntryCode]?.co2||.42));
+
+  // Hero
+  $('heroSave').textContent=fc(tot);
+  $('heroSub').textContent=`That's ${pct}% of your annual electricity bill`;
+  $('heroCO2').textContent=co2.toLocaleString();
+  const inst=(vn('cpm')||150)*area*cnt;
+  $('heroPayback').textContent=tot>0?Math.ceil(inst/tot):'—';
+  const rl=getRebates(); const rebTot=rl.reduce((s,r)=>s+(r.t==='p'?Math.round(inst*r.a):r.a),0);
+  $('heroRebate').textContent=fc(rebTot);
+
+  // Metric cards
+  $('metricRow').innerHTML=[
+    {l:'Annual saving',v:fc(tot),s:`↑ ${pct}% of bill`},
+    {l:'Cooling reduction',v:fc(cs),s:`${Math.round(cf.cl*ob*af*sp*mb*bf.hm*100)}% cut`},
+    {l:'Daylight harvest',v:fc(ds),s:'Lighting reduction'},
+    {l:'CO₂ avoided',v:co2+' kg',s:`≈ ${Math.round(co2/21)} trees/yr`}
+  ].map(m=>`<div class="metric"><div class="m-lbl">${m.l}</div><div class="m-val">${m.v}</div><div class="m-sub">${m.s}</div></div>`).join('');
+
+  // Savings bars
+  $('barsEl').innerHTML=[
+    {l:'Cooling & overheating prevention',v:cs,c:'#e8930a'},
+    {l:'Heating — passive solar gain',v:hs,c:'#1d9e89'},
+    {l:'Daylight harvesting (lighting)',v:ds,c:'#7c5ede'}
+  ].map(b=>`<div class="bar-row"><div class="bar-hd"><span class="bn">${b.l}</span><span class="bv">${fc(b.v)}</span></div><div class="bar-track"><div class="bar-fill" style="width:${tot>0?Math.min(100,Math.round(b.v/tot*100)):0}%;background:${b.c}"></div></div></div>`).join('');
+
+  updateMonthly(cs,hs,ds,cf);
+  calcROI(tot,area,cnt);
+  updateRebates(tot,area,cnt);
+  updateScenarioCompare(bill,tot,inst);
+  saveState();
+}
+
+function updateScenarioCompare(bill,save,inst){
+  const baselineCost=Math.max(0,bill);
+  const adaptiveCost=Math.max(0,bill-save);
+  const factor=(WORLD[curCntryCode]?.co2||.42);
+  const baseCo2=Math.round(baselineCost*factor);
+  const adaptiveCo2=Math.round(adaptiveCost*factor);
+  const payback=save>0?Math.ceil(inst/save):null;
+  $('compareEl').innerHTML=`<div class="cmp-grid">
+    <div class="cmp-card">
+      <div class="cmp-title">Baseline facade</div>
+      <div class="cmp-v">${fc(baselineCost)}</div>
+      <div class="cmp-sub">Annual cost · ${baseCo2.toLocaleString()} kg CO₂/yr · no payback</div>
+    </div>
+    <div class="cmp-card">
+      <div class="cmp-title">Adaptive facade</div>
+      <div class="cmp-v">${fc(adaptiveCost)}</div>
+      <div class="cmp-sub">Annual cost · ${adaptiveCo2.toLocaleString()} kg CO₂/yr · payback ${payback?payback+' yrs':'—'}</div>
+    </div>
+  </div>`;
+}
+
+/* ── Monthly chart ──────────────────────────────────────────────────────── */
+function updateMonthly(cs,hs,ds,cf){
+  const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const s=cf.mo.reduce((a,b)=>a+b,0);
+  const cM=cf.mo.map(m=>parseFloat((cs*m/s).toFixed(1)));
+  const hM=cf.mo.map(m=>parseFloat((hs*m/s).toFixed(1)));
+  const dM=cf.mo.map(m=>parseFloat((ds*m/s).toFixed(1)));
+  const tot=cM.map((c,i)=>c+hM[i]+dM[i]);
+  const pk=MO[tot.indexOf(Math.max(...tot))], lw=MO[tot.indexOf(Math.min(...tot))];
+  $('mInsight').innerHTML=`Peak savings month: <strong>${pk}</strong> (${fc(Math.max(...tot))}) &nbsp;·&nbsp; Lowest: <strong>${lw}</strong> (${fc(Math.min(...tot))}) &nbsp;·&nbsp; Monthly average: <strong>${fc(Math.round(lastSave/12))}</strong>`;
+  const dk=matchMedia('(prefers-color-scheme:dark)').matches;
+  const gc=dk?'rgba(255,255,255,.07)':'rgba(0,0,0,.06)', tc=dk?'#5a6b57':'#8fa08b';
+  if(mChartInst){mChartInst.data.datasets[0].data=cM;mChartInst.data.datasets[1].data=hM;mChartInst.data.datasets[2].data=dM;mChartInst.update();return;}
+  const ctx=$('mChart');if(!ctx)return;
+  mChartInst=new Chart(ctx,{type:'bar',data:{labels:MO,datasets:[
+    {label:'Cooling',data:cM,backgroundColor:'#e8930a',stack:'s'},
+    {label:'Heating',data:hM,backgroundColor:'#1d9e89',stack:'s'},
+    {label:'Daylight',data:dM,backgroundColor:'#7c5ede',stack:'s'}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fc(c.raw)}`}}},
+    scales:{x:{stacked:true,ticks:{autoSkip:false,maxRotation:0,font:{size:10},color:tc},grid:{color:gc}},
+            y:{stacked:true,ticks:{callback:v=>fc(v),font:{size:10},color:tc},grid:{color:gc}}}}});
+}
+
+/* ── ROI ────────────────────────────────────────────────────────────────── */
+function calcROI(save,area,cnt){
+  if(save===undefined){save=lastSave;area=vn('wArea');cnt=vn('wCount');}
+  $('cpm').value=clamp(vn('cpm'),50,500);
+  $('maint').value=clamp(vn('maint'),0,600);
+  $('egrow').value=clamp(vn('egrow'),0,12);
+  const cpp=vn('cpm'),mt=vn('maint'),gr=vn('egrow')/100;
+  const inst=cpp*area*cnt; lastInstall=inst;
+  let cum=0,pb=0,rd=[];
+  for(let y=1;y<=10;y++){cum+=save*Math.pow(1+gr,y-1)-mt;if(cum>=inst&&!pb)pb=y;rd.push(Math.round(cum));}
+  const net=rd[9]-inst;
+  $('heroPayback').textContent=pb||'—';
+  const netColor=net>=0?'var(--g600)':'var(--r400)';
+  $('roiCards').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <div class="metric"><div class="m-lbl">Install cost</div><div class="m-val" style="font-size:16px">${fc(inst)}</div></div>
+    <div class="metric"><div class="m-lbl">Payback</div><div class="m-val" style="font-size:16px">${pb?pb+' yrs':'>10 yrs'}</div></div>
+    <div class="metric"><div class="m-lbl">10-yr net return</div><div class="m-val" style="font-size:16px;color:${netColor}">${fc(net)}</div></div>
+    <div class="metric"><div class="m-lbl">Lifetime ROI</div><div class="m-val" style="font-size:16px">${inst>0?Math.round((net/inst)*100):0}%</div></div></div>`;
+  $('roiSum').innerHTML=`Install cost: ${fc(inst)}<br>Payback: <strong>${pb||'>10'} years</strong><br>10-yr savings: ${fc(rd[9])}<br>Net return: <strong>${fc(net)}</strong>`;
+  const dk=matchMedia('(prefers-color-scheme:dark)').matches;
+  const gc=dk?'rgba(255,255,255,.07)':'rgba(0,0,0,.06)', tc=dk?'#5a6b57':'#8fa08b';
+  if(rChartInst){rChartInst.data.datasets[0].data=rd;rChartInst.data.datasets[0].backgroundColor=rd.map(v=>v<inst?'#c8c8c0':'#1d9e89');rChartInst.data.datasets[1].data=Array(10).fill(Math.round(inst));rChartInst.update();return;}
+  const ctx=$('rChart');if(!ctx)return;
+  rChartInst=new Chart(ctx,{type:'bar',data:{labels:['Y1','Y2','Y3','Y4','Y5','Y6','Y7','Y8','Y9','Y10'],datasets:[
+    {label:'Cumulative savings',data:rd,backgroundColor:rd.map(v=>v<inst?'#c8c8c0':'#1d9e89'),borderRadius:3},
+    {type:'line',label:'Install cost',data:Array(10).fill(Math.round(inst)),borderColor:'#e04b30',borderWidth:1.5,borderDash:[4,4],pointRadius:0,fill:false}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fc(c.raw)}`}}},
+    scales:{x:{ticks:{font:{size:10},color:tc},grid:{color:gc}},y:{ticks:{callback:v=>fc(v),font:{size:10},color:tc},grid:{color:gc}}}}});
+}
+
+/* ── Rebates ────────────────────────────────────────────────────────────── */
+function getRebates(){
+  const rd=REBATES[curCntryCode]||REBATES['_']||{};
+  return rd[curReg]||rd['_']||[];
+}
+function updateRebates(save,area,cnt){
+  const inst=(vn('cpm')||150)*area*cnt;
+  const rl=getRebates(); let tot=0;
+  $('rebList').innerHTML=rl.length?rl.map(r=>{
+    const a=r.t==='p'?Math.round(inst*r.a):r.a; tot+=a;
+    return`<div class="reb"><div class="reb-l"><div class="rn">${r.n}</div><div class="rd">${r.d}${r.t==='p'?' ('+Math.round(r.a*100)+'% of install)':''}</div></div><div class="reb-a">${fc(a)}</div></div>`;
+  }).join(''):`<div style="font-size:12px;color:var(--muted);padding:8px 0">No specific programmes found — check your national energy authority.</div>`;
+  $('rebTotal').textContent=fc(tot);
+  $('heroRebate').textContent=fc(tot);
+  const net=Math.max(0,inst-tot);
+  const pb2=save>0?Math.ceil(net/(save-(vn('maint')||80))):null;
+  $('rebCalc').innerHTML=`Gross install: ${fc(inst)}<br>Total rebates: <span style="color:var(--g600)">− ${fc(tot)}</span><br><strong>Net investment: ${fc(net)}</strong><br>Revised payback: <strong>${pb2&&pb2>0&&pb2<=30?pb2+' years':'>10 years'}</strong>`;
+  const co2=Math.round(save*(WORLD[curCntryCode]?.co2||.42));
+  $('carbonEl').innerHTML=`<div class="reb"><div class="reb-l"><div class="rn">Carbon offset credits</div><div class="rd">${co2.toLocaleString()} kg CO₂/yr × ~$0.015/kg voluntary market rate</div></div><div class="reb-a">${fc(Math.round(co2*.015))}/yr</div></div>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SIMULATOR — live panel decision from sensor inputs
+   Uses correct angle convention throughout.
+   Saving = how much the panel's current position is saving vs doing nothing.
+═══════════════════════════════════════════════════════════════════════════ */
+function sim(){
+  const ot=vn('oTemp'), it=vn('iTemp'), ol=vn('oLux'), il=vn('iLux');
+  const otC=unit==='F'?fToC(ot):ot;
+  const itC=unit==='F'?fToC(it):it;
+
+  $('oTempV').textContent=ft(otC);
+  $('iTempV').textContent=ft(itC);
+  $('oLuxV').textContent=ol.toLocaleString();
+  $('iLuxV').textContent=il.toLocaleString();
+
+  // ── Decision logic (priority order) ──────────────────────────────────
+  const tooHot  = otC > T_HOT && (otC - itC) > T_DIFF;
+  const glare   = ol > L_GLARE_OUT && il > L_GLARE_IN;
+  const needHt  = otC < T_COLD && itC < T_COLD_IN;
+  const needLux = il < L_LOW_IN && ol > L_AVAIL_OUT && !tooHot;
+
+  let targetAngle, badge, btext, logLines, savingType;
+
+  if(tooHot && glare){
+    targetAngle = chooseClosedAngle(lastAngle); // 0° or 180°
+    badge='bwarn'; btext='Blocking — overheating & glare';
+    savingType='cooling';
+    logLines=[
+      `Outside ${ft(otC)} exceeds ${ft(T_HOT)} threshold`,
+      `Temp differential +${Math.round(otC-itC)}° — panels closing`,
+      `Outdoor glare ${ol.toLocaleString()} lux — full block activated`,
+      `Panel at ${targetAngle}° — ${Math.round(openness(targetAngle)*100)}% open (${targetAngle===0||targetAngle===180?'fully closed':'partial'})`,
+      'HVAC load reduction at maximum'
+    ];
+  } else if(tooHot){
+    targetAngle=A_PARTIAL; // 35° — sin(35°)=57% open, blocks 43%
+    badge='bwarn'; btext='Partial block — heat management';
+    savingType='cooling';
+    logLines=[
+      `Outside ${ft(otC)} — thermal protection active`,
+      `Panels at ${targetAngle}° — ${Math.round(openness(targetAngle)*100)}% open`,
+      `Blocking ${Math.round((1-openness(targetAngle))*100)}% of incoming solar load`,
+      'Maintaining some daylight while reducing heat gain'
+    ];
+  } else if(needLux){
+    targetAngle=A_DAYLIGHT; // 88° — nearly fully open
+    badge='bok'; btext='Open — maximising daylight';
+    savingType='daylight';
+    logLines=[
+      `Inside light ${il} lux — below ${L_LOW_IN} lux comfort minimum`,
+      `Panels at ${targetAngle}° — ${Math.round(openness(targetAngle)*100)}% open`,
+      `Outdoor: ${ol.toLocaleString()} lux available for harvesting`,
+      'Reducing need for artificial lighting'
+    ];
+  } else if(needHt){
+    targetAngle=A_SOLAR_GAIN; // 85° — nearly fully open
+    badge='bcold'; btext='Solar gain — passive heating';
+    savingType='heating';
+    logLines=[
+      `Outside cold: ${ft(otC)} — solar gain mode active`,
+      `Panels at ${targetAngle}° — ${Math.round(openness(targetAngle)*100)}% open`,
+      `Capturing solar radiation to passively warm interior`,
+      `Inside currently ${ft(itC)} — target is above ${ft(T_COLD_IN)}`
+    ];
+  } else {
+    targetAngle=A_NEUTRAL; // 60°
+    badge='bok'; btext='Balanced — optimal comfort';
+    savingType='balanced';
+    logLines=[
+      `Conditions within comfortable range`,
+      `Panels at ${targetAngle}° — ${Math.round(openness(targetAngle)*100)}% open`,
+      'Diffused light, partial solar control',
+      'No overheating, glare, or daylight deficit detected'
+    ];
+  }
+
+  lastAngle=targetAngle;
+
+  // ── Render panel ───────────────────────────────────────────────────────
+  // Panel bar rotates: 0°=vertical (thin), 90°=horizontal (full width visible)
+  // We represent this visually: at 0° panel appears thin (face-on from above)
+  // at 90° panel appears full width (edge-on, full profile visible)
+  const panelEl=$('panelBar');
+  const visibleWidth = Math.round(openness(targetAngle) * 90) + 4; // 4px min so always visible
+  const col = tooHot||glare ? '#e04b30' : needHt||needLux ? '#1d9e89' : '#2d8226';
+  panelEl.style.width=visibleWidth+'px';
+  panelEl.style.background=col;
+  panelEl.style.top='calc(50% - 4px)';
+  $('angleLabel').textContent=targetAngle+'°';
+  $('angleLabel').style.color=col;
+
+  // Openness bar
+  const op=Math.round(openness(targetAngle)*100);
+  $('opennessBar').style.width=op+'%';
+  $('opennessBar').style.background=col;
+  $('opennessLabel').textContent=op+'% open';
+  $('opennessLabel').style.color=col;
+
+  // Status badge
+  $('simStatus').innerHTML=`<span class="badge ${badge}"><span class="bdot"></span>${btext}</span>`;
+
+  // Log
+  $('simLog').innerHTML=logLines.map(l=>`<div class="logline"><div class="ldot"></div><span>${l}</span></div>`).join('');
+
+  // Sensor cards
+  $('sgrid').innerHTML=[
+    {l:'Outside temp',v:ft(otC),warn:otC>T_HOT,good:otC<T_COLD},
+    {l:'Inside temp',v:ft(itC),warn:false,good:false},
+    {l:'Outside light',v:(ol/1000).toFixed(0)+'k lux',warn:ol>L_GLARE_OUT,good:false},
+    {l:'Inside light',v:il+' lux',warn:il<L_LOW_IN,good:il>=200&&il<=800}
+  ].map(s=>`<div class="schip"><div class="schip-l">${s.l}</div><div class="schip-v" style="color:${s.warn?'var(--a400)':s.good?'var(--g500)':'var(--text)'}">${s.v}</div></div>`).join('');
+
+  // ── Live saving calculation ─────────────────────────────────────────────
+  // The saving comes from the panel's current position reducing HVAC or lighting load.
+  // Formula: saving_rate = blocked_fraction × hvac_power × electricity_rate
+  // blocked_fraction = how much of the load the panel is currently intercepting
+  const rate=vn('elecRate')||0.13;      // $/kWh consumer inputs
+  $('elecRate').value=clamp(rate,0,5);
+  $('hvacKw').value=clamp(vn('hvacKw')||3.5,0.5,20);
+  const tariff=getActiveTariffRate();
+  const safeRate=tariff.rate;
+  const hvacKw=vn('hvacKw');       // kW consumer inputs
+  const blocked=1-openness(targetAngle); // fraction blocked (0=fully open, 1=fully closed)
+
+  let savingPerHour=0, savingExplain='';
+
+  if(savingType==='cooling'){
+    // Saving = how much cooling load we've removed × HVAC power × rate
+    // Fully closed blocks all solar gain → full HVAC saving
+    // Partially closed → proportional saving
+    savingPerHour = blocked * hvacKw * safeRate;
+    const pct=Math.round(blocked*100);
+    savingExplain=`Panel is ${pct}% closed → blocking ${pct}% of solar heat gain. `+
+      `HVAC doesn't need to work as hard: saving ${blocked.toFixed(2)} × ${hvacKw} kW × ${sym()}${safeRate}/kWh.`;
+  } else if(savingType==='heating'){
+    // Saving = solar gain captured × HVAC power it replaces × rate
+    // At 90° = full solar gain → maximum heating saving
+    const captured=openness(targetAngle);
+    savingPerHour = captured * hvacKw * 0.6 * safeRate; // 0.6 = capture efficiency
+    const pct=Math.round(captured*100);
+    savingExplain=`Panel is ${pct}% open → capturing ${pct}% of available solar radiation. `+
+      `Passive heat reduces boiler/heat pump load. Capture efficiency: 60% (ASHRAE 90.1).`;
+  } else if(savingType==='daylight'){
+    // Saving = lighting load replaced by natural light
+    // Average home lighting ≈ 0.3 kW (30W × ~10 bulbs)
+    const lightingKw=0.3;
+    const captured=openness(targetAngle);
+    savingPerHour = captured * lightingKw * safeRate;
+    savingExplain=`Panel is ${Math.round(captured*100)}% open → ${Math.round(captured*100)}% of natural light entering. `+
+      `Assuming ~0.3 kW of lighting replaced at ${sym()}${safeRate}/kWh.`;
+  } else {
+    // Balanced — partial saving from diffused light
+    const captured=openness(targetAngle);
+    savingPerHour = captured * 0.3 * safeRate * 0.5; // partial credit
+    savingExplain=`Balanced mode — panels diffusing light at ${Math.round(captured*100)}% open. Partial lighting saving.`;
+  }
+
+  const savingPerDay=savingPerHour*24;
+  const savingPerYear=savingPerHour*8760;
+
+  $('liveRate').textContent=sym()+savingPerHour.toFixed(4)+' / hr';
+  $('liveAnnual').textContent=fc(savingPerYear)+' / year (if these conditions persist)';
+  $('liveExplain').textContent=`${savingExplain} Active tariff: ${tariff.label} at ${sym()}${safeRate}/kWh.`;
+  if($('tariffNote')){
+    $('tariffNote').textContent=tariffMode==='flat'
+      ? `Using flat rate at ${sym()}${vn('elecRate')}/kWh.`
+      : `TOU mode: peak ${Math.round(vn('peakStart'))}:00-${Math.round(vn('peakEnd'))}:00 at ${sym()}${vn('peakRate')}/kWh, off-peak at ${sym()}${vn('offPeakRate')}/kWh.`;
+  }
+  saveState();
+}
+
+/* ── PDF export ─────────────────────────────────────────────────────────── */
+function exportPDF(){
+  try{
+    const{jsPDF}=window.jspdf; const doc=new jsPDF();
+    doc.setFontSize(20);doc.setFont('helvetica','bold');doc.text('FacadeIQ Energy Report',14,18);
+    doc.setFontSize(10);doc.setFont('helvetica','normal');doc.setTextColor(130);
+    doc.text(curReg+', '+curCntryName+' · '+new Date().toLocaleDateString(),14,26);
+    doc.setDrawColor(220);doc.line(14,30,196,30);doc.setTextColor(0);
+    doc.setFont('helvetica','bold');doc.text('Profile',14,40);
+    doc.setFont('helvetica','normal');
+    [['Annual bill',fc(vn('eBill'))],['HVAC share',Math.round(vn('hvac'))+'%'],
+     ['Window area',vn('wArea')+'m²'],['Windows',vn('wCount')],
+     ['Building',$('bldType').value],['Climate',clim],['Age',Math.round(vn('bAge'))+' yrs'],['Mode',mode]
+    ].forEach(([k,v],i)=>{doc.text(k+':',14,50+i*7);doc.text(String(v),90,50+i*7);});
+    doc.setFont('helvetica','bold');doc.text('Annual savings estimate',14,116);
+    doc.setFont('helvetica','normal');
+    doc.text('Total annual saving: '+fc(lastSave),14,126);
+    doc.text('Install cost: '+fc(lastInstall),14,134);
+    doc.text('CO2 avoided: '+Math.round(lastSave*(WORLD[curCntryCode]?.co2||.42))+' kg/yr',14,142);
+    doc.text('Panel convention: 0°/180° = fully closed · 90° = fully open',14,150);
+    doc.text('Tariff mode: '+(tariffMode==='flat'?'Flat rate':'Peak/off-peak'),14,158);
+    doc.text('Share key: '+encodeStatePayload().slice(0,38)+'...',14,166);
+    const rl=getRebates();
+    if(rl.length){doc.setFont('helvetica','bold');doc.text('Incentives — '+curReg,14,176);doc.setFont('helvetica','normal');
+      rl.forEach((r,i)=>doc.text('• '+r.n+': '+fc(r.t==='p'?Math.round(lastInstall*r.a):r.a),14,186+i*8));}
+    doc.setFontSize(8);doc.setTextColor(160);doc.text('Values are estimates. Actual savings vary by usage and installation.',14,275);
+    doc.save('facadeiq-energy-report.pdf');
+  }catch(e){alert('Use browser print → Save as PDF');}
+}
+
+/* ── Boot ───────────────────────────────────────────────────────────────── */
+initCountrySearch();
+$('cntrySearch').value='United States';
+populateRegions();
+loadStateFromUrl();
+loadState();
+if($('curHour')) $('curHour').value=new Date().getHours();
+setTimeout(()=>{calc();sim();},50);
+</script>
+</body>
+</html>
