@@ -1029,13 +1029,32 @@ function copyShareLink(){
 }
 
 async function loadWeather(query){
-  const q=((query!==undefined?query:$('weatherQuery').value)||'').trim();
+  let q=((query!==undefined?query:$('weatherQuery').value)||'').trim();
   if(!q){$('weatherStatus').textContent='Please enter a city or ZIP first.';return;}
+  const qLower=q.toLowerCase();
+  if(qLower==='la') q='Los Angeles';
+  if(qLower==='nyc') q='New York';
+  if(qLower==='sf') q='San Francisco';
   $('weatherStatus').textContent='Loading weather data...';
   try{
-    const g=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=1&language=en&format=json&countryCode=${encodeURIComponent(curCntryCode)}`).then(r=>r.json());
-    if(!g.results||!g.results.length){$('weatherStatus').textContent='No matching location found.';return;}
-    const loc=g.results[0];
+    const g=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=10&language=en&format=json&countryCode=${encodeURIComponent(curCntryCode)}`).then(r=>r.json());
+    if(!g.results||!g.results.length){
+      weatherAdj={cl:1,ht:1,dl:1,mo:null,src:''};
+      calc();
+      $('weatherStatus').textContent='No matching location found. Weather adjustment cleared.';
+      return;
+    }
+    const regTxt=(curReg||'').toLowerCase();
+    const qNorm=q.toLowerCase();
+    const ranked=[...g.results].sort((a,b)=>{
+      const aName=(a.name||'').toLowerCase(), bName=(b.name||'').toLowerCase();
+      const aExact=(aName===qNorm?3:aName.startsWith(qNorm)?2:aName.includes(qNorm)?1:0);
+      const bExact=(bName===qNorm?3:bName.startsWith(qNorm)?2:bName.includes(qNorm)?1:0);
+      const aReg=((a.admin1||'').toLowerCase().includes(regTxt)?1:0);
+      const bReg=((b.admin1||'').toLowerCase().includes(regTxt)?1:0);
+      return (bExact+bReg)-(aExact+aReg);
+    });
+    const loc=ranked[0];
     const w=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&hourly=temperature_2m,shortwave_radiation&daily=temperature_2m_max,temperature_2m_min,shortwave_radiation_sum&current=temperature_2m&timezone=auto`).then(r=>r.json());
     const now=Math.round(w.current?.temperature_2m ?? 24);
     const t=(w.hourly?.temperature_2m||[]).slice(0,24);
@@ -1074,7 +1093,9 @@ async function loadWeather(query){
     $('weatherStatus').textContent=`Loaded weather for ${weatherAdj.src}${loc.country?`, ${loc.country}`:''}. Annual model adjusted using city weather profile. Climate set to "${autoClim}".`;
     calc();sim();
   }catch{
-    $('weatherStatus').textContent='Weather lookup failed. Please try another location.';
+    weatherAdj={cl:1,ht:1,dl:1,mo:null,src:''};
+    calc();
+    $('weatherStatus').textContent='Weather lookup failed. Weather adjustment cleared.';
   }
 }
 
