@@ -270,6 +270,14 @@ footer{text-align:center;padding:2rem 1rem;font-size:11px;color:var(--hint);bord
       <span class="t-lbl">State / Region</span>
       <select id="regSelect" onchange="calc()"></select>
     </div>
+    <div class="cfg-f" style="min-width:190px;flex:2">
+      <span class="t-lbl">City</span>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input class="cntry-search" id="cityInput" placeholder="Type city..." list="cityList" oninput="onCityInput()"/>
+        <button class="btn btn-s" style="padding:7px 10px" onclick="applyCityWeather()">Use</button>
+      </div>
+      <datalist id="cityList"></datalist>
+    </div>
     <div class="cfg-f" style="min-width:150px;flex:1.5">
       <span class="t-lbl">Building type</span>
       <select id="bldType" onchange="calc()">
@@ -670,6 +678,8 @@ let lastSave=0, lastInstall=0, lastAngle=A_NEUTRAL;
 let mChartInst=null, rChartInst=null;
 let allCntries=[], dropOpen=false, highlightIdx=-1;
 let tariffMode='flat';
+let weatherAdj={cl:1,ht:1,dl:1,mo:null,src:''};
+let citySuggestTimer=null;
 const STATE_KEY='facadeiq-v1-state';
 
 /* ── Helpers ────────────────────────────────────────────────────────────── */
@@ -750,6 +760,8 @@ function selectCntry(code,name){
     $('billSuffix').textContent='per year';
     $('rateSuffix').textContent='per kWh';
   }
+  weatherAdj={cl:1,ht:1,dl:1,mo:null,src:''};
+  if($('cityInput')) $('cityInput').value='';
   calc();
 }
 
@@ -764,6 +776,30 @@ function populateRegions(){
     curReg='National';
   }
   $('regionLabel').textContent=curReg+', '+curCntryName;
+  if($('cityInput')) $('cityInput').value='';
+}
+
+function onCityInput(){
+  if(citySuggestTimer) clearTimeout(citySuggestTimer);
+  citySuggestTimer=setTimeout(async()=>{
+    const q=($('cityInput')?.value||'').trim();
+    if(q.length<2) return;
+    try{
+      const url=`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=8&language=en&format=json&countryCode=${encodeURIComponent(curCntryCode)}`;
+      const data=await fetch(url).then(r=>r.json());
+      const list=$('cityList');
+      if(!list) return;
+      const rows=(data.results||[]).map(r=>`${r.name}${r.admin1?`, ${r.admin1}`:''}`);
+      list.innerHTML=[...new Set(rows)].map(n=>`<option value="${n.replace(/"/g,'&quot;')}"></option>`).join('');
+    }catch{}
+  },260);
+}
+
+function applyCityWeather(){
+  const city=($('cityInput')?.value||'').trim();
+  if(!city){$('weatherStatus').textContent='Enter a city first, then click Use.';return;}
+  if($('weatherQuery')) $('weatherQuery').value=city;
+  loadWeather(city);
 }
 
 /* ── Climate & mode ─────────────────────────────────────────────────────── */
@@ -868,7 +904,9 @@ function saveState(){
       cpm:vn('cpm'),maint:vn('maint'),egrow:vn('egrow'),
       tariffMode,peakRate:vn('peakRate'),offPeakRate:vn('offPeakRate'),
       peakStart:vn('peakStart'),peakEnd:vn('peakEnd'),curHour:vn('curHour'),
-      weatherQuery:$('weatherQuery')?.value||''
+      weatherQuery:$('weatherQuery')?.value||'',
+      cityInput:$('cityInput')?.value||'',
+      weatherAdj
     };
     localStorage.setItem(STATE_KEY,JSON.stringify(state));
   }catch{}
@@ -902,6 +940,8 @@ function loadState(){
       if(s[k]!==undefined&&$(id))$(id).value=s[k];
     });
     if(s.weatherQuery!==undefined&&$('weatherQuery'))$('weatherQuery').value=s.weatherQuery;
+    if(s.cityInput!==undefined&&$('cityInput'))$('cityInput').value=s.cityInput;
+    if(s.weatherAdj) weatherAdj=s.weatherAdj;
     if(s.bldType&&$('bldType').querySelector(`option[value="${s.bldType}"]`))$('bldType').value=s.bldType;
     if(['hot','temperate','cold','mixed'].includes(s.clim))setClimDefault(s.clim);
     if(['auto','daylight','thermal'].includes(s.mode)){
@@ -925,7 +965,9 @@ function encodeStatePayload(){
     vn('sFace'), vn('ewFace'), vn('exShade'),
     vn('elecRate'), vn('hvacKw'), vn('oTemp'), vn('iTemp'), vn('oLux'), vn('iLux'),
     vn('cpm'), vn('maint'), vn('egrow'),
-    vn('peakRate'), vn('offPeakRate'), vn('peakStart'), vn('peakEnd'), vn('curHour')
+    vn('peakRate'), vn('offPeakRate'), vn('peakStart'), vn('peakEnd'), vn('curHour'),
+    $('cityInput')?.value||'',
+    weatherAdj.cl||1, weatherAdj.ht||1, weatherAdj.dl||1, weatherAdj.src||''
   ];
   const b64=btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
   return b64.replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
@@ -940,7 +982,8 @@ function applyStatePayload(s){
       sFace:p[13], ewFace:p[14], exShade:p[15],
       elecRate:p[16], hvacKw:p[17], oTemp:p[18], iTemp:p[19], oLux:p[20], iLux:p[21],
       cpm:p[22], maint:p[23], egrow:p[24],
-      peakRate:p[25], offPeakRate:p[26], peakStart:p[27], peakEnd:p[28], curHour:p[29]
+      peakRate:p[25], offPeakRate:p[26], peakStart:p[27], peakEnd:p[28], curHour:p[29],
+      cityInput:p[30], weatherAdj:{cl:p[31],ht:p[32],dl:p[33],src:p[34]}
     };
     s=obj;
   }
@@ -957,6 +1000,8 @@ function applyStatePayload(s){
   if(['auto','daylight','thermal'].includes(s.mode)){mode=s.mode;document.querySelectorAll('#modeChips .chip').forEach((b,i)=>b.classList.toggle('on',['auto','daylight','thermal'][i]===mode));}
   if(['flat','tou'].includes(s.tariffMode||'')){tariffMode=s.tariffMode;document.querySelectorAll('#tariffChips .chip').forEach((b,i)=>b.classList.toggle('on',['flat','tou'][i]===tariffMode));}
   if(s.curReg){const has=Array.from($('regSelect').options).some(o=>o.value===s.curReg);if(has){$('regSelect').value=s.curReg;curReg=s.curReg;}}
+  if(s.cityInput!==undefined&&$('cityInput')) $('cityInput').value=s.cityInput;
+  if(s.weatherAdj) weatherAdj={cl:s.weatherAdj.cl||1,ht:s.weatherAdj.ht||1,dl:s.weatherAdj.dl||1,mo:null,src:s.weatherAdj.src||''};
   if(['C','F'].includes(s.unit)&&s.unit!==unit)setUnit(s.unit);
 }
 
@@ -983,15 +1028,15 @@ function copyShareLink(){
   }
 }
 
-async function loadWeather(){
-  const q=($('weatherQuery').value||'').trim();
+async function loadWeather(query){
+  const q=((query!==undefined?query:$('weatherQuery').value)||'').trim();
   if(!q){$('weatherStatus').textContent='Please enter a city or ZIP first.';return;}
   $('weatherStatus').textContent='Loading weather data...';
   try{
-    const g=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=1&language=en&format=json`).then(r=>r.json());
+    const g=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=1&language=en&format=json&countryCode=${encodeURIComponent(curCntryCode)}`).then(r=>r.json());
     if(!g.results||!g.results.length){$('weatherStatus').textContent='No matching location found.';return;}
     const loc=g.results[0];
-    const w=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&hourly=temperature_2m,shortwave_radiation&current=temperature_2m&timezone=auto`).then(r=>r.json());
+    const w=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&hourly=temperature_2m,shortwave_radiation&daily=temperature_2m_max,temperature_2m_min,shortwave_radiation_sum&current=temperature_2m&timezone=auto`).then(r=>r.json());
     const now=Math.round(w.current?.temperature_2m ?? 24);
     const t=(w.hourly?.temperature_2m||[]).slice(0,24);
     const r=(w.hourly?.shortwave_radiation||[]).slice(0,24);
@@ -1004,7 +1049,29 @@ async function loadWeather(){
     $('iLux').value=clamp(Math.round(outLux*0.01),0,5000);
     const autoClim=avgT>=26?'hot':avgT<=10?'cold':avgT>=16?'temperate':'mixed';
     setClimDefault(autoClim);
-    $('weatherStatus').textContent=`Loaded weather for ${loc.name}${loc.country?`, ${loc.country}`:''}. Next-24h avg ${avgT.toFixed(1)}°C. Climate set to "${autoClim}".`;
+    if($('cityInput')) $('cityInput').value=`${loc.name}${loc.admin1?`, ${loc.admin1}`:''}`;
+    if($('weatherQuery')) $('weatherQuery').value=($('cityInput')?.value||q);
+
+    const dMax=w.daily?.temperature_2m_max||[];
+    const dMin=w.daily?.temperature_2m_min||[];
+    const dRad=w.daily?.shortwave_radiation_sum||[];
+    const dayCount=Math.min(dMax.length,dMin.length,dRad.length)||1;
+    let heatDays=0,coldDays=0,radAvg=0;
+    for(let i=0;i<dayCount;i++){
+      const mean=(dMax[i]+dMin[i])/2;
+      if(mean>=26) heatDays++;
+      if(mean<=10) coldDays++;
+      radAvg+=dRad[i]||0;
+    }
+    radAvg/=dayCount;
+    weatherAdj={
+      cl:clamp(0.75+(heatDays/dayCount)*0.7,0.7,1.5),
+      ht:clamp(0.75+(coldDays/dayCount)*0.7,0.7,1.5),
+      dl:clamp(0.85+(radAvg/25000),0.75,1.35),
+      mo:null,
+      src:`${loc.name}${loc.admin1?`, ${loc.admin1}`:''}`
+    };
+    $('weatherStatus').textContent=`Loaded weather for ${weatherAdj.src}${loc.country?`, ${loc.country}`:''}. Annual model adjusted using city weather profile. Climate set to "${autoClim}".`;
     calc();sim();
   }catch{
     $('weatherStatus').textContent='Weather lookup failed. Please try another location.';
@@ -1024,7 +1091,13 @@ function calc(){
   const bill=vn('eBill'), hvac=vn('hvac')/100;
   const sf=vn('sFace')/100, ew=vn('ewFace')/100, age=vn('bAge'), sh=vn('exShade')/100;
   const area=vn('wArea'), cnt=vn('wCount');
-  const bt=$('bldType').value, bf=BLD[bt], cf=CLIM[clim], mb=MB[mode];
+  const bt=$('bldType').value, bf=BLD[bt], baseCf=CLIM[clim], mb=MB[mode];
+  const cf={
+    cl:baseCf.cl*(weatherAdj.cl||1),
+    ht:baseCf.ht*(weatherAdj.ht||1),
+    dl:baseCf.dl*(weatherAdj.dl||1),
+    mo:baseCf.mo
+  };
 
   $('sFaceV').textContent=Math.round(vn('sFace'))+'%';
   $('ewFaceV').textContent=Math.round(vn('ewFace'))+'%';
@@ -1048,7 +1121,7 @@ function calc(){
 
   // Hero
   $('heroSave').textContent=fc(tot);
-  $('heroSub').textContent=`That's ${pct}% of your annual electricity bill`;
+  $('heroSub').textContent=`That's ${pct}% of your annual electricity bill${weatherAdj.src?` (weather-adjusted for ${weatherAdj.src})`:''}`;
   $('heroCO2').textContent=co2.toLocaleString();
   const inst=(vn('cpm')||150)*area*cnt;
   $('heroPayback').textContent=tot>0?Math.ceil(inst/tot):'—';
